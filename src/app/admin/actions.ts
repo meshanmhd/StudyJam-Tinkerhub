@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 
 export async function addXpToUser(userId: string, teamId: string | null, xpValue: number, reason: string, category: string) {
     const supabase = await createClient()
+
+    // Insert XP log
     const { error } = await supabase.from('xp_logs').insert({
         user_id: userId || null,
         team_id: teamId || null,
@@ -13,8 +15,41 @@ export async function addXpToUser(userId: string, teamId: string | null, xpValue
         reason,
     })
     if (error) return { error: error.message }
+
+    // Update individual XP on users table
+    if (userId) {
+        const { error: userErr } = await supabase.rpc('increment_user_xp', {
+            p_user_id: userId,
+            p_xp: xpValue,
+        })
+        if (userErr) {
+            // Fallback: manual update if RPC doesn't exist
+            const { data: curr } = await supabase.from('users').select('individual_xp').eq('id', userId).single()
+            if (curr) {
+                await supabase.from('users').update({ individual_xp: (curr.individual_xp || 0) + xpValue }).eq('id', userId)
+            }
+        }
+    }
+
+    // Update team XP on teams table
+    if (teamId) {
+        const { error: teamErr } = await supabase.rpc('increment_team_xp', {
+            p_team_id: teamId,
+            p_xp: xpValue,
+        })
+        if (teamErr) {
+            // Fallback: manual update if RPC doesn't exist
+            const { data: curr } = await supabase.from('teams').select('team_xp').eq('id', teamId).single()
+            if (curr) {
+                await supabase.from('teams').update({ team_xp: (curr.team_xp || 0) + xpValue }).eq('id', teamId)
+            }
+        }
+    }
+
     revalidatePath('/admin')
+    revalidatePath('/admin/xp')
     revalidatePath('/dashboard')
+    revalidatePath('/leaderboard')
     return { success: true }
 }
 
@@ -50,7 +85,7 @@ export async function reviewSubmission(submissionId: string, action: 'approved' 
     const { error } = await supabase.from('task_submissions').update(updates).eq('id', submissionId)
     if (error) return { error: error.message }
 
-    // Log XP if approved
+    // Log XP and update user's individual_xp if approved
     if (action === 'approved') {
         const { data: task } = await supabase.from('tasks').select('title').eq('id', taskId).single()
         await supabase.from('xp_logs').insert({
@@ -59,10 +94,26 @@ export async function reviewSubmission(submissionId: string, action: 'approved' 
             xp_value: xpGiven,
             reason: `Task approved: ${task?.title || taskId}`,
         })
+
+        // Update the student's individual_xp in the users table
+        const { data: curr } = await supabase.from('users').select('individual_xp').eq('id', userId).single()
+        if (curr) {
+            await supabase.from('users').update({ individual_xp: (curr.individual_xp || 0) + xpGiven }).eq('id', userId)
+        }
+
+        // Also update team XP if the user is on a team
+        const { data: userProfile } = await supabase.from('users').select('team_id').eq('id', userId).single()
+        if (userProfile?.team_id) {
+            const { data: team } = await supabase.from('teams').select('team_xp').eq('id', userProfile.team_id).single()
+            if (team) {
+                await supabase.from('teams').update({ team_xp: (team.team_xp || 0) + xpGiven }).eq('id', userProfile.team_id)
+            }
+        }
     }
 
     revalidatePath('/admin/tasks')
     revalidatePath('/dashboard')
+    revalidatePath('/leaderboard')
     return { success: true }
 }
 
