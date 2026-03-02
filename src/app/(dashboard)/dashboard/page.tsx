@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     const [profileRes, scoresRes, tasksRes, submissionsRes, badgesRes, teamsRes] = await Promise.all([
         supabase.from('users').select('*, team:teams(*)').eq('id', user.id).single(),
         supabase.from('user_scores').select('*').order('final_score', { ascending: false }),
-        supabase.from('tasks').select('*').order('created_at', { ascending: false }).limit(5),
+        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('task_submissions').select('*').eq('user_id', user.id),
         supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', user.id),
         supabase.from('teams').select('*').order('team_xp', { ascending: false }).limit(3),
@@ -36,6 +36,30 @@ export default async function DashboardPage() {
 
     const currentUserScore = scores.find(s => s.user_id === user.id)
     const submissionMap = Object.fromEntries(submissions.map(s => [s.task_id, s]))
+
+    // 1-hour grace period for students
+    const now = new Date()
+    const ONE_HOUR = 60 * 60 * 1000
+
+    // Active tasks: no deadline OR (deadline + 1 hour > now) OR they already submitted it (so it stays visible)
+    const activeTasks = tasks.filter(t => {
+        if (!t.deadline) return true
+        const hasSubmitted = !!submissionMap[t.id]
+        if (hasSubmitted) return true
+
+        const deadlinePlusGrace = new Date(new Date(t.deadline).getTime() + ONE_HOUR)
+        return deadlinePlusGrace > now
+    })
+
+    // Past tasks: has deadline AND deadline + 1 hour <= now AND not submitted
+    const pastTasks = tasks.filter(t => {
+        if (!t.deadline) return false
+        const hasSubmitted = !!submissionMap[t.id]
+        if (hasSubmitted) return false
+
+        const deadlinePlusGrace = new Date(new Date(t.deadline).getTime() + ONE_HOUR)
+        return deadlinePlusGrace <= now
+    })
 
     return (
         <div className="space-y-8">
@@ -89,16 +113,24 @@ export default async function DashboardPage() {
 
                     {/* Active Tasks below */}
                     <div>
-                        <h2 className="text-lg font-semibold mb-4">
-                            Active Tasks
-                        </h2>
-                        {tasks.length === 0 ? (
-                            <div className="glass rounded-2xl p-8 text-center">
-                                <p className="text-muted-foreground text-sm">No tasks yet. Check back soon!</p>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold">
+                                Active Tasks
+                            </h2>
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                                +1hr Grace Period
+                            </span>
+                        </div>
+
+                        {activeTasks.length === 0 ? (
+                            <div className="glass rounded-2xl p-8 text-center border border-border/20">
+                                <p className="text-2xl mb-2">✨</p>
+                                <p className="text-muted-foreground text-sm font-medium">No active tasks right now.</p>
+                                <p className="text-xs text-muted-foreground/70 mt-1">Check back later for new challenges!</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {tasks.map(task => (
+                                {activeTasks.map(task => (
                                     <TaskCard
                                         key={task.id}
                                         task={task}
@@ -106,6 +138,24 @@ export default async function DashboardPage() {
                                         userId={user.id}
                                     />
                                 ))}
+                            </div>
+                        )}
+
+                        {pastTasks.length > 0 && (
+                            <div className="mt-8">
+                                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                                    Past Tasks ({pastTasks.length})
+                                </h2>
+                                <div className="space-y-3 opacity-60 grayscale-[0.5] pointer-events-none">
+                                    {pastTasks.map(task => (
+                                        <TaskCard
+                                            key={task.id}
+                                            task={task}
+                                            submission={submissionMap[task.id] as TaskSubmission | undefined}
+                                            userId={user.id}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>

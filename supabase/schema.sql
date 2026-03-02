@@ -103,14 +103,17 @@ ALTER TABLE public.xp_logs ENABLE ROW LEVEL SECURITY;
 
 -- Creating a trigger to update individual_xp when xp_log is inserted for a user
 CREATE OR REPLACE FUNCTION update_user_individual_xp()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 BEGIN
   IF NEW.user_id IS NOT NULL THEN
     UPDATE public.users SET individual_xp = individual_xp + NEW.xp_value WHERE id = NEW.user_id;
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER trigger_update_user_xp
 AFTER INSERT ON public.xp_logs
@@ -119,14 +122,17 @@ EXECUTE FUNCTION update_user_individual_xp();
 
 -- Creating a trigger to update team_xp when xp_log is inserted for a team
 CREATE OR REPLACE FUNCTION update_team_xp()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 BEGIN
   IF NEW.team_id IS NOT NULL THEN
     UPDATE public.teams SET team_xp = team_xp + NEW.xp_value WHERE id = NEW.team_id;
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER trigger_update_team_xp
 AFTER INSERT ON public.xp_logs
@@ -139,4 +145,5 @@ CREATE POLICY "Enable read access for all users" ON public.teams FOR SELECT USIN
 CREATE POLICY "Enable read access for all users" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON public.xp_logs FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON public.tasks FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON public.task_submissions FOR SELECT USING (true);
 

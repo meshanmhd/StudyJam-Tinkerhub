@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { createTask, reviewSubmission } from '../actions'
@@ -23,6 +24,7 @@ interface TaskManagerClientProps {
 const MAX_DESC = 300
 
 export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps) {
+    const router = useRouter()
     const [showForm, setShowForm] = useState(false)
     const [creating, setCreating] = useState(false)
     const [reviewing, setReviewing] = useState<string | null>(null)
@@ -33,16 +35,27 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
     const pending = localSubmissions.filter(s => s.status === 'pending')
     const reviewed = localSubmissions.filter(s => s.status !== 'pending')
 
+    const now = new Date()
+    const activeTasks = localTasks.filter(t => !t.deadline || new Date(t.deadline) > now)
+    const pastTasks = localTasks.filter(t => t.deadline && new Date(t.deadline) <= now)
+
     async function handleCreateTask(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setCreating(true)
         const fd = new FormData(e.currentTarget)
         const result = await createTask(fd)
-        if (result.error) toast.error(result.error)
-        else {
+        if (result.error) {
+            toast.error(result.error)
+        } else {
             toast.success('Task created! ✅')
+            // Optimistically prepend the new task to localTasks
+            if (result.task) {
+                setLocalTasks(prev => [result.task as Task, ...prev])
+            }
             setShowForm(false)
             setDesc('')
+            // Refresh server data so student page also picks up the new task
+            router.refresh()
         }
         setCreating(false)
     }
@@ -55,9 +68,12 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
         else {
             toast.success(action === 'approved' ? `Approved! +${xp} XP awarded 🎉` : 'Submission rejected.')
             setLocalSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: action } : s))
+            router.refresh()
         }
         setReviewing(null)
     }
+
+    const inputCls = "w-full px-3 py-2.5 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
 
     return (
         <div className="space-y-6">
@@ -95,7 +111,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                                     name="title"
                                     required
                                     placeholder="Build a REST API…"
-                                    className="w-full px-3 py-2.5 h-10 bg-muted/20 border border-border/40 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
+                                    className={inputCls}
                                 />
                             </div>
 
@@ -115,7 +131,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                                     value={desc}
                                     onChange={e => setDesc(e.target.value)}
                                     placeholder="Describe what students need to do…"
-                                    className="w-full px-3 py-2.5 bg-muted/20 border border-border/40 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
+                                    className="w-full px-3 py-2.5 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                                 />
                             </div>
 
@@ -132,7 +148,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                                             required
                                             min={1}
                                             placeholder="25"
-                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/40 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500/40 transition-all"
+                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -144,7 +160,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                                             id="deadline"
                                             name="deadline"
                                             type="datetime-local"
-                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/40 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all"
+                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -162,7 +178,10 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
 
                 {/* Task rows */}
                 <div className="divide-y divide-border/20">
-                    {localTasks.map(task => (
+                    <div className="px-5 py-2 bg-muted/5 border-b border-border/20">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Tasks ({activeTasks.length})</p>
+                    </div>
+                    {activeTasks.map(task => (
                         <div key={task.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-muted/10 transition-colors">
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium">{task.title}</p>
@@ -178,11 +197,34 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                             <span className="text-sm font-bold text-amber-400 shrink-0 mt-0.5">+{task.xp_reward} XP</span>
                         </div>
                     ))}
-                    {localTasks.length === 0 && (
-                        <div className="py-10 text-center">
-                            <p className="text-2xl mb-2">📋</p>
-                            <p className="text-sm text-muted-foreground">No tasks yet. Create one above.</p>
+                    {activeTasks.length === 0 && (
+                        <div className="py-8 text-center">
+                            <p className="text-sm text-muted-foreground">No active tasks right now.</p>
                         </div>
+                    )}
+
+                    {pastTasks.length > 0 && (
+                        <>
+                            <div className="px-5 py-2 bg-muted/5 border-y border-border/20 mt-4">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Past Tasks ({pastTasks.length})</p>
+                            </div>
+                            {pastTasks.map(task => (
+                                <div key={task.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-muted/10 transition-colors opacity-70 grayscale-[0.5]">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium">{task.title}</p>
+                                        {task.description && (
+                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>
+                                        )}
+                                        {task.deadline && (
+                                            <p className="text-xs text-rose-400/70 mt-0.5 flex items-center gap-1">
+                                                <Clock size={10} /> Ended: {formatDate(task.deadline)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <span className="text-sm font-bold text-amber-400/70 shrink-0 mt-0.5">+{task.xp_reward} XP</span>
+                                </div>
+                            ))}
+                        </>
                     )}
                 </div>
             </div>

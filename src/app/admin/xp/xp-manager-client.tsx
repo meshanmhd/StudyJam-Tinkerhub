@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -25,6 +26,7 @@ interface XpManagerClientProps {
 }
 
 export function XpManagerClient({ students, teams, logs }: XpManagerClientProps) {
+    const router = useRouter()
     const [mode, setMode] = useState<'individual' | 'team'>('individual')
     const [targetId, setTargetId] = useState('')
     const [xp, setXp] = useState('')
@@ -36,13 +38,14 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
         e.preventDefault()
         if (!targetId || !xp) { toast.error('Fill all required fields'); return }
         setLoading(true)
-        const userId = mode === 'individual' ? targetId : null
+        const userId = mode === 'individual' ? targetId : ''
         const teamId = mode === 'team' ? targetId : null
-        const result = await addXpToUser(userId || '', teamId, parseInt(xp), reason, category)
+        const result = await addXpToUser(userId, teamId, parseInt(xp), reason, category)
         if (result.error) toast.error(result.error)
         else {
             toast.success(`XP awarded! 🎉`)
             setXp(''); setReason(''); setTargetId('')
+            router.refresh()
         }
         setLoading(false)
     }
@@ -50,6 +53,8 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
     const CATEGORY_ICONS: Record<string, string> = {
         task: '📋', attendance: '📅', presentation: '🎤', help: '🤝', other: '✨'
     }
+
+    const inputCls = "w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -88,7 +93,7 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                             {mode === 'individual' ? 'Student' : 'Team'}
                         </Label>
                         <Select value={targetId} onValueChange={setTargetId} required>
-                            <SelectTrigger className="bg-muted/20 border-border/40 focus:border-amber-500/50 focus:ring-amber-500/20 h-10">
+                            <SelectTrigger className="bg-muted/20 border-border/60 ring-1 ring-border/20 focus:border-amber-500/50 focus:ring-amber-500/20 h-10">
                                 <SelectValue placeholder={`Select ${mode}…`} />
                             </SelectTrigger>
                             <SelectContent>
@@ -125,14 +130,14 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                                     min={1}
                                     required
                                     placeholder="50"
-                                    className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/40 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
+                                    className={inputCls}
                                 />
                             </div>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</Label>
                             <Select value={category} onValueChange={setCategory}>
-                                <SelectTrigger className="bg-muted/20 border-border/40 h-10">
+                                <SelectTrigger className="bg-muted/20 border-border/60 ring-1 ring-border/20 h-10">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -157,7 +162,7 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                                 value={reason}
                                 onChange={e => setReason(e.target.value)}
                                 placeholder="Won the code challenge…"
-                                className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/40 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                                className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                             />
                         </div>
                     </div>

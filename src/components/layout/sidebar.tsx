@@ -35,6 +35,7 @@ const adminNav: NavItem[] = [
     { href: '/admin/session', label: 'Session Mode', icon: Zap },
     { href: '/admin/tasks', label: 'Task Manager', icon: Settings },
     { href: '/admin/xp', label: 'XP Manager', icon: ChartBar },
+    { href: '/admin/teams', label: 'Team Assign', icon: Users2 },
     { href: '/admin/weekly', label: 'Weekly Ritual', icon: Trophy },
     { href: '/admin/analytics', label: 'Analytics', icon: ChartBar },
 ]
