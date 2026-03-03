@@ -432,6 +432,123 @@ export async function markAttendanceBulk(
     return { success: true }
 }
 
+// ─── Games ────────────────────────────────────────────────────────────────────
+
+export async function createGame(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const rawWord = (formData.get('target_word') as string || '').trim().toUpperCase()
+
+    const { data, error } = await supabase.from('games').insert({
+        title: formData.get('title') as string,
+        game_type: 'wordle',
+        target_word: rawWord,
+        word_list: [rawWord],   // just store the target; validation uses real dictionary
+        deadline: formData.get('deadline') as string || null,
+        created_by: user.id,
+    }).select().single()
+
+    if (error) return { error: error.message }
+    revalidatePath('/admin/games')
+    return { success: true, game: data }
+}
+
+export async function submitGameResult(
+    gameId: string,
+    solved: boolean,
+    guesses: string[],
+    timeTakenSeconds: number
+) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase.from('game_submissions').insert({
+        game_id: gameId,
+        user_id: user.id,
+        solved,
+        guesses,
+        num_guesses: guesses.length,
+        time_taken_seconds: timeTakenSeconds,
+    })
+
+    if (error) return { error: error.message }
+    revalidatePath('/games')
+    revalidatePath(`/games/${gameId}`)
+    return { success: true }
+}
+
+export async function releaseGameResult(gameId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    // Mark result as released
+    const { error } = await supabase
+        .from('games')
+        .update({ result_released: true })
+        .eq('id', gameId)
+    if (error) return { error: error.message }
+
+    // Fetch all solved submissions sorted by submit time (fastest first)
+    const { data: solvedSubs } = await supabase
+        .from('game_submissions')
+        .select('user_id, num_guesses, submitted_at')
+        .eq('game_id', gameId)
+        .eq('solved', true)
+        .order('submitted_at', { ascending: true })
+
+    if (solvedSubs && solvedSubs.length > 0) {
+        const sessionPrefix = `game-${gameId}`
+        const awardedUserIds = new Set<string>()
+
+        // Award top 3 by submission time
+        const xpMap: Record<number, number> = { 0: 20, 1: 10, 2: 5 }
+        const placeLabel: Record<number, string> = { 0: '1st', 1: '2nd', 2: '3rd' }
+
+        for (let i = 0; i < Math.min(3, solvedSubs.length); i++) {
+            const sub = solvedSubs[i]
+            awardedUserIds.add(sub.user_id)
+            await supabase.from('xp_logs').insert({
+                user_id: sub.user_id,
+                team_id: null,
+                category: 'game',
+                xp_value: xpMap[i],
+                reason: `Wordle Game — ${placeLabel[i]} place`,
+                session_id: `${sessionPrefix}-place-${i + 1}`,
+            })
+        }
+
+        // Fewest guesses award (5 XP) — pick from all solved, prefer non-top-3
+        const sortedByGuesses = [...solvedSubs].sort((a, b) => a.num_guesses - b.num_guesses)
+        const leastGuesser = sortedByGuesses.find(s => !awardedUserIds.has(s.user_id))
+            || sortedByGuesses[0]
+
+        if (leastGuesser) {
+            // Check not already awarded (top-3 already get enough XP)
+            if (!awardedUserIds.has(leastGuesser.user_id)) {
+                await supabase.from('xp_logs').insert({
+                    user_id: leastGuesser.user_id,
+                    team_id: null,
+                    category: 'game',
+                    xp_value: 5,
+                    reason: 'Wordle Game — Fewest guesses',
+                    session_id: `${sessionPrefix}-least-guesser`,
+                })
+            } else {
+                // Top-3 is also the least guesser — just log a bonus note (no extra XP to avoid double)
+            }
+        }
+    }
+
+    revalidatePath('/admin/games')
+    revalidatePath(`/admin/games/${gameId}`)
+    revalidatePath('/games')
+    return { success: true }
+}
+
 export async function markNoClassDay(date: string, studentIds: string[]) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

@@ -13,6 +13,7 @@ import {
     CalendarCheck,
     UsersRound,
     ClipboardList,
+    Gamepad2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/auth/actions'
@@ -30,6 +31,7 @@ interface NavItem {
 const studentNav: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/tasks', label: 'My Tasks', icon: ClipboardList },
+    { href: '/games', label: 'Games', icon: Gamepad2 },
     { href: '/team', label: 'My Team', icon: Users2 },
     { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
 ]
@@ -37,6 +39,7 @@ const studentNav: NavItem[] = [
 const adminNav: NavItem[] = [
     { href: '/admin', label: 'Overview', icon: LayoutDashboard },
     { href: '/admin/tasks', label: 'Task Manager', icon: Settings },
+    { href: '/admin/games', label: 'Games', icon: Gamepad2 },
     { href: '/admin/xp', label: 'XP Manager', icon: BarChart3 },
     { href: '/admin/teams', label: 'Team Manager', icon: UsersRound },
     { href: '/admin/attendance', label: 'Attendance', icon: CalendarCheck },

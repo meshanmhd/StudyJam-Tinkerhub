@@ -166,6 +166,130 @@ body {
   border-radius: 3px;
 }
 
+/* Subtle outer ring on popups/dialogs */
+.dialog-stroke {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: oklch(0.4 0.02 264);
+}
+
+/* ── Wordle Tile Animations ───────────────────────────────────────── */
+
+/* Tile flip reveal */
+@keyframes wordle-flip-in {
+  0% {
+    transform: rotateX(0deg);
+  }
+
+  50% {
+    transform: rotateX(-90deg);
+  }
+
+  100% {
+    transform: rotateX(-90deg);
+  }
+}
+
+@keyframes wordle-flip-out {
+  0% {
+    transform: rotateX(-90deg);
+  }
+
+  50% {
+    transform: rotateX(-90deg);
+  }
+
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+.wordle-flip {
+  animation: wordle-flip-in 0.15s ease-in forwards, wordle-flip-out 0.15s ease-out 0.15s forwards;
+}
+
+/* Row shake for invalid word */
+@keyframes wordle-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  50%,
+  90% {
+    transform: translateX(-4px);
+  }
+
+  30%,
+  70% {
+    transform: translateX(4px);
+  }
+}
+
+.wordle-shake {
+  animation: wordle-shake 0.5s ease-in-out;
+}
+
+/* Tiles bounce on win */
+@keyframes wordle-bounce {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-20px);
+  }
+
+  60% {
+    transform: translateY(-8px);
+  }
+}
+
+.wordle-bounce>* {
+  animation: wordle-bounce 0.6s ease-in-out both;
+}
+
+.wordle-bounce>*:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.wordle-bounce>*:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.wordle-bounce>*:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.wordle-bounce>*:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+.wordle-bounce>*:nth-child(5) {
+  animation-delay: 320ms;
+}
+
+/* Tile pop on key press */
+@keyframes wordle-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.wordle-pop {
+  animation: wordle-pop 0.08s ease-in-out;
 }
