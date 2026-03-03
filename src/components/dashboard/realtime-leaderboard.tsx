@@ -51,12 +51,7 @@ export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLe
 
     const currentUserScore = scores.find(s => s.user_id === currentUserId)
 
-    // Optional client-side grouping/aggregation for Teams if not directly supported by user_scores
-    // assuming user_scores has team_xp and team_id if we want to show groups, 
-    // but the component `Leaderboard` currently expects `UserScore[]`. Let's tweak it if needed.
-
-    // Actually the requested design handles the toggle: "a toggle to change the indivitual xp and team xp"
-    // I will sort the scores here. 
+    // Sort by selected mode
     const sortedScores = [...scores].sort((a, b) => {
         if (view === 'team') {
             return b.team_xp - a.team_xp
@@ -72,7 +67,7 @@ export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLe
                         onClick={() => setView('individual')}
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${view === 'individual' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                     >
-                        Individual XP
+                        Individual
                     </button>
                     <button
                         onClick={() => setView('team')}

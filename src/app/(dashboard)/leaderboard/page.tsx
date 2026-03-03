@@ -27,14 +27,14 @@ export default async function LeaderboardPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-2xl font-bold">Leaderboard</h1>
-                <p className="text-muted-foreground text-sm mt-1">Top performers based on Lab Contribution Index</p>
+                <p className="text-muted-foreground text-sm mt-1">Individual ranked by Impact Score · Teams ranked by Team XP</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Individual */}
+                {/* Individual — sorted by impact (final_score) */}
                 <div>
                     <h2 className="text-base font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">
-                        Individual Rankings
+                        Individual Rankings — Impact Score
                     </h2>
                     <div className="glass rounded-2xl p-4 border border-border/40">
                         <Leaderboard
@@ -45,10 +45,10 @@ export default async function LeaderboardPage() {
                     </div>
                 </div>
 
-                {/* Teams */}
+                {/* Teams — sorted by team_xp */}
                 <div>
                     <h2 className="text-base font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">
-                        Team Rankings
+                        Team Rankings — Team XP
                     </h2>
                     <div className="glass rounded-2xl p-4 border border-border/40 space-y-2">
                         {teams.map((team, i) => {
@@ -57,8 +57,8 @@ export default async function LeaderboardPage() {
                                 <div
                                     key={team.id}
                                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors ${isMyTeam
-                                            ? 'bg-primary/10 border-primary/30'
-                                            : 'border-border/20 hover:border-border/50'
+                                        ? 'bg-primary/10 border-primary/30'
+                                        : 'border-border/20 hover:border-border/50'
                                         }`}
                                 >
                                     <span className={`text-lg w-7 text-center font-bold shrink-0 ${i < 3 ? RANK_STYLES[i] : 'text-muted-foreground text-sm'}`}>

@@ -4,16 +4,7 @@ import { UserBadge } from '@/types'
 import { cn } from '@/lib/utils'
 import { timeAgo } from '@/lib/utils'
 
-const BADGE_COLORS: Record<string, string> = {
-    'Bug Hunter': 'from-rose-500/20 to-rose-500/5 border-rose-500/30',
-    'Community Backbone': 'from-blue-500/20 to-blue-500/5 border-blue-500/30',
-    'Most Improved': 'from-emerald-500/20 to-emerald-500/5 border-emerald-500/30',
-    'Feature Builder': 'from-amber-500/20 to-amber-500/5 border-amber-500/30',
-    'Lab Legend': 'from-yellow-500/20 to-yellow-500/5 border-yellow-500/30',
-    'Streak Master': 'from-orange-500/20 to-orange-500/5 border-orange-500/30',
-    'Team Player': 'from-violet-500/20 to-violet-500/5 border-violet-500/30',
-    'Top Presenter': 'from-sky-500/20 to-sky-500/5 border-sky-500/30',
-}
+import { getBadgeColor } from '@/lib/utils'
 
 interface BadgeGridProps {
     userBadges: UserBadge[]
@@ -34,7 +25,7 @@ export function BadgeGrid({ userBadges }: BadgeGridProps) {
             {userBadges.map((ub) => {
                 const badge = ub.badge
                 if (!badge) return null
-                const colors = BADGE_COLORS[badge.name] || 'from-muted/20 to-muted/5 border-border/30'
+                const colors = getBadgeColor(badge.name || '')
                 return (
                     <div
                         key={ub.id}

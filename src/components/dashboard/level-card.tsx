@@ -15,13 +15,13 @@ const LEVEL_COLORS = [
 const LEVEL_BADGES = ['🌱', '🔨', '🎨', '🏛️', '⭐']
 
 interface LevelCardProps {
-    xp: number
+    impact: number
 }
 
-export function LevelCard({ xp }: LevelCardProps) {
-    const level = getUserLevel(xp)
-    const progress = getLevelProgress(xp)
-    const nextLevel = getNextLevel(xp)
+export function LevelCard({ impact }: LevelCardProps) {
+    const level = getUserLevel(impact)
+    const progress = getLevelProgress(impact)
+    const nextLevel = getNextLevel(impact)
     const colorClass = LEVEL_COLORS[level.level - 1]
     const badge = LEVEL_BADGES[level.level - 1]
 
@@ -45,8 +45,8 @@ export function LevelCard({ xp }: LevelCardProps) {
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs text-muted-foreground mb-0.5">Total XP</p>
-                        <p className="text-2xl font-bold text-foreground">{xp.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">Impact Score</p>
+                        <p className="text-2xl font-bold text-foreground">{Math.round(impact).toLocaleString()}</p>
                     </div>
                 </div>
 
@@ -54,7 +54,7 @@ export function LevelCard({ xp }: LevelCardProps) {
                     <div>
                         <div className="flex justify-between text-xs text-muted-foreground mb-2">
                             <span>{progress}% to {nextLevel.title}</span>
-                            <span>{nextLevel.minXp - xp} XP needed</span>
+                            <span>{nextLevel.minImpact - Math.round(impact)} pts needed</span>
                         </div>
                         <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
                             <div

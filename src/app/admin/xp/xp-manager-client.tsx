@@ -31,28 +31,24 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
     const [targetId, setTargetId] = useState('')
     const [xp, setXp] = useState('')
     const [reason, setReason] = useState('')
-    const [category, setCategory] = useState('other')
     const [loading, setLoading] = useState(false)
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
-        if (!targetId || !xp) { toast.error('Fill all required fields'); return }
+        if (!targetId || !xp || !reason.trim()) { toast.error('Fill all required fields'); return }
         setLoading(true)
         const userId = mode === 'individual' ? targetId : ''
         const teamId = mode === 'team' ? targetId : null
-        const result = await addXpToUser(userId, teamId, parseInt(xp), reason, category)
+        const result = await addXpToUser(userId, teamId, parseInt(xp), reason)
         if (result.error) toast.error(result.error)
         else {
-            toast.success(`XP awarded! 🎉`)
+            toast.success(`XP awarded!`)
             setXp(''); setReason(''); setTargetId('')
             router.refresh()
         }
         setLoading(false)
     }
 
-    const CATEGORY_ICONS: Record<string, string> = {
-        task: '📋', attendance: '📅', presentation: '🎤', help: '🤝', other: '✨'
-    }
 
     const inputCls = "w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
 
@@ -82,7 +78,7 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                                     : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
-                                {m === 'individual' ? '🧠 Individual' : '👥 Team'}
+                                {m === 'individual' ? 'Individual' : 'Team'}
                             </button>
                         ))}
                     </div>
@@ -93,7 +89,7 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                             {mode === 'individual' ? 'Student' : 'Team'}
                         </Label>
                         <Select value={targetId} onValueChange={setTargetId} required>
-                            <SelectTrigger className="bg-muted/20 border-border/60 ring-1 ring-border/20 focus:border-amber-500/50 focus:ring-amber-500/20 h-10">
+                            <SelectTrigger className="w-full bg-muted/20 border-border/60 ring-1 ring-border/20 focus:border-amber-500/50 focus:ring-amber-500/20 h-10">
                                 <SelectValue placeholder={`Select ${mode}…`} />
                             </SelectTrigger>
                             <SelectContent>
@@ -115,53 +111,37 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                         </Select>
                     </div>
 
-                    {/* XP amount + Category */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Amount</Label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400">
-                                    <Zap size={13} />
-                                </span>
-                                <input
-                                    value={xp}
-                                    onChange={e => setXp(e.target.value)}
-                                    type="number"
-                                    min={1}
-                                    required
-                                    placeholder="50"
-                                    className={inputCls}
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</Label>
-                            <Select value={category} onValueChange={setCategory}>
-                                <SelectTrigger className="bg-muted/20 border-border/60 ring-1 ring-border/20 h-10">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CATEGORIES.map(c => (
-                                        <SelectItem key={c} value={c} className="capitalize">
-                                            {CATEGORY_ICONS[c]} {c}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                    {/* XP amount */}
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Amount</Label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400">
+                                <Zap size={13} />
+                            </span>
+                            <input
+                                value={xp}
+                                onChange={e => setXp(e.target.value)}
+                                type="number"
+                                min={1}
+                                required
+                                placeholder="50"
+                                className={inputCls}
+                            />
                         </div>
                     </div>
 
                     {/* Reason */}
                     <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            Reason <span className="normal-case text-muted-foreground/60">(optional)</span>
+                            Reason / Title
                         </Label>
                         <div className="relative">
                             <MessageSquare size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
                             <input
                                 value={reason}
                                 onChange={e => setReason(e.target.value)}
-                                placeholder="Won the code challenge…"
+                                required
+                                placeholder="e.g. Won the code challenge…"
                                 className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                             />
                         </div>
@@ -195,28 +175,26 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                 <div className="glass rounded-2xl border border-border/30 divide-y divide-border/20 overflow-hidden max-h-[480px] overflow-y-auto">
                     {logs.map(log => (
                         <div key={log.id} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors">
-                            <div className="w-7 h-7 rounded-md bg-muted/30 flex items-center justify-center text-sm shrink-0">
-                                {CATEGORY_ICONS[log.category] || '✨'}
+                            <div className="w-7 h-7 rounded-md bg-muted/30 flex items-center justify-center text-sm shrink-0 border border-border/40">
+                                <Zap size={14} className="text-amber-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium truncate">{log.reason || log.category}</p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                <p className="text-sm font-semibold truncate">{log.reason || 'Manual XP Award'}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
                                     {(log.user as { name?: string } | null)?.name
                                         || (log.team as { team_name?: string } | null)?.team_name
                                         || '—'}
-                                    <span className="mx-1">·</span>
+                                    <span className="mx-1.5">•</span>
                                     {timeAgo(log.created_at)}
                                 </p>
                             </div>
                             <div className="text-right shrink-0">
                                 <p className="text-sm font-bold text-amber-400">+{log.xp_value}</p>
-                                <p className="text-[10px] text-muted-foreground capitalize">{log.category}</p>
                             </div>
                         </div>
                     ))}
                     {logs.length === 0 && (
                         <div className="py-12 text-center">
-                            <p className="text-2xl mb-2">📭</p>
                             <p className="text-sm text-muted-foreground">No XP awarded yet.</p>
                         </div>
                     )}

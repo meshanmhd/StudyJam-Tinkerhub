@@ -41,7 +41,7 @@ export function TeamAssignClient({ students, teams }: TeamAssignClientProps) {
             toast.error(result.error)
         } else {
             const teamName = teams.find(t => t.id === teamId)?.team_name
-            toast.success(resolvedTeamId ? `Assigned to ${teamName} ✅` : 'Removed from team')
+            toast.success(resolvedTeamId ? `Assigned to ${teamName}` : 'Removed from team')
             setLocalStudents(prev =>
                 prev.map(s => s.id === studentId
                     ? { ...s, team_id: resolvedTeamId, team: resolvedTeamId ? { id: teamId, team_name: teamName! } : null }

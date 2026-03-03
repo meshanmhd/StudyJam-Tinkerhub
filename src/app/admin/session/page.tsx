@@ -13,7 +13,7 @@ export default async function SessionModePage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">⚡ Session Mode</h1>
+                <h1 className="text-2xl font-bold">Session Mode</h1>
                 <p className="text-muted-foreground text-sm mt-1">
                     Quickly award XP during live study sessions
                 </p>

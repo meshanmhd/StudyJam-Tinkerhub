@@ -7,9 +7,11 @@ import {
     Users2,
     Trophy,
     LogOut,
-    Zap,
     Settings,
-    ChartBar,
+    BarChart3,
+    Medal,
+    CalendarCheck,
+    UsersRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/auth/actions'
@@ -32,12 +34,13 @@ const studentNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
     { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-    { href: '/admin/session', label: 'Session Mode', icon: Zap },
     { href: '/admin/tasks', label: 'Task Manager', icon: Settings },
-    { href: '/admin/xp', label: 'XP Manager', icon: ChartBar },
-    { href: '/admin/teams', label: 'Team Assign', icon: Users2 },
+    { href: '/admin/xp', label: 'XP Manager', icon: BarChart3 },
+    { href: '/admin/teams', label: 'Team Manager', icon: UsersRound },
+    { href: '/admin/attendance', label: 'Attendance', icon: CalendarCheck },
+    { href: '/admin/badges', label: 'Badges', icon: Medal },
     { href: '/admin/weekly', label: 'Weekly Ritual', icon: Trophy },
-    { href: '/admin/analytics', label: 'Analytics', icon: ChartBar },
+    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
 interface SidebarProps {
@@ -67,22 +70,23 @@ export function Sidebar({ role, userName, userEmail }: SidebarProps) {
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
                 {nav.map((item) => {
                     const Icon = item.icon
-                    const active = pathname === item.href || (item.href !== '/admin' && item.href !== '/dashboard' && pathname.startsWith(item.href))
+                    const active = pathname === item.href ||
+                        (item.href !== '/admin' && item.href !== '/dashboard' && pathname.startsWith(item.href))
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                                 active
-                                    ? 'bg-primary/20 text-primary border border-primary/20'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                    ? 'bg-primary/15 text-primary'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                             )}
                         >
-                            <Icon size={16} />
+                            <Icon size={15} />
                             {item.label}
                         </Link>
                     )
@@ -91,8 +95,8 @@ export function Sidebar({ role, userName, userEmail }: SidebarProps) {
 
             {/* User */}
             <div className="px-3 pb-4 pt-3 border-t border-border/50">
-                <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-muted/30 mb-2">
-                    <Avatar className="w-8 h-8">
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/20 mb-2">
+                    <Avatar className="w-8 h-8 shrink-0">
                         <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -106,7 +110,7 @@ export function Sidebar({ role, userName, userEmail }: SidebarProps) {
                         type="submit"
                         variant="ghost"
                         size="sm"
-                        className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-sm"
                     >
                         <LogOut size={14} />
                         Sign out

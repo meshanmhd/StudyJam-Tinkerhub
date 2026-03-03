@@ -95,7 +95,7 @@ export default async function TeamPage() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {members.map(member => {
-                        const level = getUserLevel(member.individual_xp)
+                        const level = getUserLevel(member.final_score)
                         const initials = member.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
                         const isMe = member.user_id === user.id
                         return (

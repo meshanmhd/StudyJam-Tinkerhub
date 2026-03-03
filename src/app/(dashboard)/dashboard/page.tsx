@@ -4,7 +4,6 @@ import { LevelCard } from '@/components/dashboard/level-card'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { TaskCard } from '@/components/dashboard/task-card'
 import { BadgeGrid } from '@/components/dashboard/badge-grid'
-import { ImpactMeter } from '@/components/dashboard/impact-meter'
 import { RealtimeLeaderboard } from '@/components/dashboard/realtime-leaderboard'
 import type { Task, TaskSubmission, UserBadge, UserScore } from '@/types'
 
@@ -37,16 +36,18 @@ export default async function DashboardPage() {
     const currentUserScore = scores.find(s => s.user_id === user.id)
     const submissionMap = Object.fromEntries(submissions.map(s => [s.task_id, s]))
 
+    // Impact score for level system
+    const impactScore = currentUserScore ? currentUserScore.final_score : 0
+
     // 1-hour grace period for students
     const now = new Date()
     const ONE_HOUR = 60 * 60 * 1000
 
-    // Active tasks: no deadline OR (deadline + 1 hour > now) OR they already submitted it (so it stays visible)
+    // Active tasks: no deadline OR (deadline + 1 hour > now) OR they already submitted it
     const activeTasks = tasks.filter(t => {
         if (!t.deadline) return true
         const hasSubmitted = !!submissionMap[t.id]
         if (hasSubmitted) return true
-
         const deadlinePlusGrace = new Date(new Date(t.deadline).getTime() + ONE_HOUR)
         return deadlinePlusGrace > now
     })
@@ -56,7 +57,6 @@ export default async function DashboardPage() {
         if (!t.deadline) return false
         const hasSubmitted = !!submissionMap[t.id]
         if (hasSubmitted) return false
-
         const deadlinePlusGrace = new Date(new Date(t.deadline).getTime() + ONE_HOUR)
         return deadlinePlusGrace <= now
     })
@@ -77,38 +77,41 @@ export default async function DashboardPage() {
                 </div>
             </div>
 
-            {/* Top stats row or inside columns? The request says "the right side the 40% side need the indivitual xp and team xp card at the top". So we remove the top stats row from here and put it in the right column. */}
-
             {/* Main Layout: Left 60% (col-span-7) / Right 40% (col-span-5) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Left Column (60%) */}
                 <div className="lg:col-span-7 space-y-6">
-                    {/* Level at top */}
+                    {/* Level card — now driven by impact score */}
                     <div>
-                        <LevelCard xp={profile.individual_xp} />
+                        <LevelCard impact={impactScore} />
                     </div>
 
-                    {/* Streak & Impact below level */}
+                    {/* Streak cards */}
                     <div className="grid grid-cols-2 gap-4">
+                        {/* Current Streak */}
                         {profile.streak_days > 0 ? (
                             <div className="glass rounded-2xl p-4 border border-orange-500/20 flex flex-col justify-center items-center h-full">
                                 <p className="text-3xl text-center streak-glow mb-1">🔥</p>
-                                <p className="text-sm text-center font-bold text-orange-400">{profile.streak_days} Day Streak</p>
+                                <p className="text-2xl font-bold text-orange-400 text-center">{profile.streak_days}</p>
+                                <p className="text-xs text-center text-muted-foreground mt-0.5">Current Streak</p>
+                                <p className="text-[10px] text-center text-orange-400/70 mt-0.5">days in a row</p>
                             </div>
                         ) : (
-                            <StatCard
-                                title="Longest Streak"
-                                value={`${profile.longest_streak} Days`}
-                                subtitle="Personal best"
-                                color="amber"
-                            />
-                        )}
-                        {currentUserScore && (
-                            <div className="glass rounded-2xl p-4 border border-border/20 flex flex-col justify-center">
-                                <p className="text-xs text-muted-foreground font-medium mb-1">Your Impact</p>
-                                <p className="text-2xl font-bold text-primary">{Math.round(currentUserScore.final_score).toLocaleString()}</p>
+                            <div className="glass rounded-2xl p-4 border border-border/20 flex flex-col justify-center items-center h-full">
+                                <p className="text-3xl text-center mb-1">💤</p>
+                                <p className="text-2xl font-bold text-muted-foreground text-center">0</p>
+                                <p className="text-xs text-center text-muted-foreground mt-0.5">Current Streak</p>
+                                <p className="text-[10px] text-center text-muted-foreground/60 mt-0.5">Start attending!</p>
                             </div>
                         )}
+
+                        {/* Longest Streak */}
+                        <div className="glass rounded-2xl p-4 border border-amber-500/20 flex flex-col justify-center items-center h-full">
+                            <p className="text-3xl text-center mb-1">🏆</p>
+                            <p className="text-2xl font-bold text-amber-400 text-center">{profile.longest_streak}</p>
+                            <p className="text-xs text-center text-muted-foreground mt-0.5">Best Streak</p>
+                            <p className="text-[10px] text-center text-amber-400/70 mt-0.5">personal record</p>
+                        </div>
                     </div>
 
                     {/* Active Tasks below */}

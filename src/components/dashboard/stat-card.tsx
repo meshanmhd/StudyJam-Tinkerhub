@@ -1,12 +1,13 @@
 'use client'
 
+import { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 interface StatCardProps {
     title: string
     value: string | number
     subtitle?: string
-    icon?: string
+    icon?: ReactNode
     color?: 'purple' | 'blue' | 'amber' | 'green' | 'rose'
     glow?: boolean
 }

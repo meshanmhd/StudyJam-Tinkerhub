@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { login } from '@/app/auth/actions'
+import { register } from '@/app/auth/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,7 +17,7 @@ import {
     CardTitle,
 } from '@/components/ui/card'
 
-export function LoginForm() {
+export function RegisterForm() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
@@ -25,12 +25,12 @@ export function LoginForm() {
         e.preventDefault()
         setLoading(true)
         const fd = new FormData(e.currentTarget)
-        const result = await login(fd)
+        const result = await register(fd)
         if (result?.error) {
             toast.error(result.error)
             setLoading(false)
         } else if (result?.success) {
-            toast.success('Logged in successfully')
+            toast.success('Account created successfully!')
             router.push(result.redirectTo)
         }
     }
@@ -38,16 +38,26 @@ export function LoginForm() {
     return (
         <Card className="bg-black border-zinc-900 border text-white rounded-xl">
             <CardHeader className="text-center">
-
-                <CardTitle className="text-2xl font-bold">Login</CardTitle>
+                <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
                 <CardDescription className="text-zinc-400">
-                    Enter your email below to login to your account
+                    Enter your details below to join StudyJam
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                     <div className="space-y-2">
-                        <Label htmlFor="email" className="text-white">Email</Label>
+                        <Label htmlFor="name" className="text-white font-medium">Full Name</Label>
+                        <Input
+                            id="name"
+                            name="name"
+                            type="text"
+                            placeholder="John Doe"
+                            required
+                            className="bg-black border-zinc-800 text-white focus-visible:ring-1 focus-visible:ring-white rounded-lg px-4 h-10"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email" className="text-white font-medium">Email</Label>
                         <Input
                             id="email"
                             name="email"
@@ -58,10 +68,7 @@ export function LoginForm() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <Label htmlFor="password" className="text-white font-medium">Password</Label>
-
-                        </div>
+                        <Label htmlFor="password" className="text-white font-medium">Password</Label>
                         <Input
                             id="password"
                             name="password"
@@ -71,16 +78,16 @@ export function LoginForm() {
                         />
                     </div>
                     <Button type="submit" disabled={loading} className="w-full bg-white text-black hover:bg-zinc-200 mt-2 font-medium">
-                        {loading ? 'Logging in…' : 'Login'}
+                        {loading ? 'Creating account…' : 'Sign Up'}
                     </Button>
                 </form>
                 <div className="text-center text-sm text-zinc-400 mt-4">
-                    Don't have an account?{' '}
-                    <Link href="/register" className="text-white hover:underline underline-offset-4">
-                        Sign up
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-white hover:underline underline-offset-4">
+                        Log in
                     </Link>
                 </div>
             </CardContent>
-        </Card >
+        </Card>
     )
 }

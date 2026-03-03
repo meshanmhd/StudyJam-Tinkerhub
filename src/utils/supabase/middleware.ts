@@ -40,7 +40,12 @@ export async function updateSession(request: NextRequest) {
 
     // You can define other protected routes here.
     // Example: Redirecting unauthenticated users to login
-    if (!user && !isAuthCallback && !request.nextUrl.pathname.startsWith('/login')) {
+    if (
+        !user &&
+        !isAuthCallback &&
+        !request.nextUrl.pathname.startsWith('/login') &&
+        !request.nextUrl.pathname.startsWith('/register')
+    ) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)

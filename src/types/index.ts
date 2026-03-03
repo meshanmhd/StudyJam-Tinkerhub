@@ -8,6 +8,17 @@ export type BadgeType = 'weekly' | 'permanent'
 
 export type WeeklyRole = 'Lead' | 'Builder' | 'Debugger' | 'Tester' | 'Presenter'
 
+export type AttendanceStatus = 'present' | 'absent' | 'no_class'
+
+export interface Attendance {
+    id: string
+    student_id: string
+    date: string
+    status: AttendanceStatus
+    marked_by?: string
+    created_at: string
+}
+
 export interface Team {
     id: string
     team_name: string
@@ -95,35 +106,37 @@ export interface UserBadge {
 export interface Level {
     level: number
     title: string
-    minXp: number
-    maxXp: number | null
+    minImpact: number
+    maxImpact: number | null
 }
 
+// Impact score thresholds (impact = 0.6 × team_xp + 0.4 × individual_xp)
+// Adjusted to reflect real-world combined score ranges
 export const LEVELS: Level[] = [
-    { level: 1, title: 'Explorer', minXp: 0, maxXp: 99 },
-    { level: 2, title: 'Builder', minXp: 100, maxXp: 199 },
-    { level: 3, title: 'Creator', minXp: 200, maxXp: 349 },
-    { level: 4, title: 'Architect', minXp: 350, maxXp: 499 },
-    { level: 5, title: 'Lab Legend', minXp: 500, maxXp: null },
+    { level: 1, title: 'Explorer', minImpact: 0, maxImpact: 149 },
+    { level: 2, title: 'Builder', minImpact: 150, maxImpact: 349 },
+    { level: 3, title: 'Creator', minImpact: 350, maxImpact: 599 },
+    { level: 4, title: 'Architect', minImpact: 600, maxImpact: 899 },
+    { level: 5, title: 'Lab Legend', minImpact: 900, maxImpact: null },
 ]
 
-export function getUserLevel(xp: number): Level {
+export function getUserLevel(impact: number): Level {
     for (let i = LEVELS.length - 1; i >= 0; i--) {
-        if (xp >= LEVELS[i].minXp) return LEVELS[i]
+        if (impact >= LEVELS[i].minImpact) return LEVELS[i]
     }
     return LEVELS[0]
 }
 
-export function getLevelProgress(xp: number): number {
-    const level = getUserLevel(xp)
-    if (!level.maxXp) return 100 // Max level
-    const range = level.maxXp - level.minXp + 1
-    const progress = xp - level.minXp
+export function getLevelProgress(impact: number): number {
+    const level = getUserLevel(impact)
+    if (!level.maxImpact) return 100 // Max level
+    const range = level.maxImpact - level.minImpact + 1
+    const progress = impact - level.minImpact
     return Math.min(100, Math.round((progress / range) * 100))
 }
 
-export function getNextLevel(xp: number): Level | null {
-    const current = getUserLevel(xp)
+export function getNextLevel(impact: number): Level | null {
+    const current = getUserLevel(impact)
     const next = LEVELS.find(l => l.level === current.level + 1)
     return next || null
 }

@@ -35,11 +35,11 @@ export function SessionModeClient({ students, teams, recentLogs }: SessionModeCl
     async function handleQuickXp(btn: typeof QUICK_XP[0]) {
         if (!targetId) { toast.error('Select a target first'); return }
         setLoading(btn.label)
-        const userId = mode === 'individual' ? targetId : null
+        const userId = mode === 'individual' ? targetId : ''
         const teamId = mode === 'team' ? targetId : null
-        const result = await addXpToUser(userId || '', teamId, btn.xp, btn.reason, btn.category)
+        const result = await addXpToUser(userId || '', teamId, btn.xp, btn.reason)
         if (result.error) toast.error(result.error)
-        else toast.success(`${btn.label} XP awarded! 🎉`)
+        else toast.success(`${btn.label} XP awarded!`)
         setLoading(null)
     }
 
@@ -57,7 +57,7 @@ export function SessionModeClient({ students, teams, recentLogs }: SessionModeCl
                                 className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 capitalize ${mode === m ? 'bg-primary/20 text-primary border border-primary/30' : 'border border-border/30 text-muted-foreground hover:text-foreground'
                                     }`}
                             >
-                                {m === 'individual' ? '🧠 Individual' : '👥 Team'}
+                                {m === 'individual' ? 'Individual' : 'Team'}
                             </button>
                         ))}
                     </div>

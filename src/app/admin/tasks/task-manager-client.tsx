@@ -47,7 +47,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
         if (result.error) {
             toast.error(result.error)
         } else {
-            toast.success('Task created! ✅')
+            toast.success('Task created!')
             // Optimistically prepend the new task to localTasks
             if (result.task) {
                 setLocalTasks(prev => [result.task as Task, ...prev])
@@ -66,7 +66,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
         const result = await reviewSubmission(sub.id, action, xp, sub.task_id, sub.user_id)
         if (result.error) toast.error(result.error)
         else {
-            toast.success(action === 'approved' ? `Approved! +${xp} XP awarded 🎉` : 'Submission rejected.')
+            toast.success(action === 'approved' ? `Approved! +${xp} XP awarded` : 'Submission rejected.')
             setLocalSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: action } : s))
             router.refresh()
         }
@@ -275,7 +275,6 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                     ))}
                     {pending.length === 0 && (
                         <div className="glass rounded-2xl p-8 text-center border border-border/30">
-                            <p className="text-2xl mb-2">🎉</p>
                             <p className="text-sm text-muted-foreground">All caught up! No pending submissions.</p>
                         </div>
                     )}

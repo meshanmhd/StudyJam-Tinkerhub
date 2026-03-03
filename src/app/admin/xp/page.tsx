@@ -12,7 +12,7 @@ export default async function XpManagerPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">⚡ XP Manager</h1>
+                <h1 className="text-2xl font-bold">XP Manager</h1>
                 <p className="text-muted-foreground text-sm mt-1">Manually add XP and view the full XP audit log</p>
             </div>
             <XpManagerClient

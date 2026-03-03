@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
-import { TeamAssignClient } from './team-assign-client'
+import { TeamManagerClient } from './team-manager-client'
 
-export default async function TeamAssignPage() {
+export default async function TeamsPage() {
     const supabase = await createClient()
 
     const [studentsRes, teamsRes] = await Promise.all([
@@ -13,16 +13,16 @@ export default async function TeamAssignPage() {
         supabase.from('teams').select('id, team_name, team_xp').order('team_name'),
     ])
 
+    const students = studentsRes.data || []
+    const teams = teamsRes.data || []
+
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">👥 Team Assignment</h1>
-                <p className="text-muted-foreground text-sm mt-1">Assign students to teams and manage group memberships</p>
+                <h1 className="text-2xl font-bold">Team Management</h1>
+                <p className="text-muted-foreground text-sm mt-1">Create teams and manage team memberships</p>
             </div>
-            <TeamAssignClient
-                students={studentsRes.data || []}
-                teams={teamsRes.data || []}
-            />
+            <TeamManagerClient students={students} teams={teams} />
         </div>
     )
 }

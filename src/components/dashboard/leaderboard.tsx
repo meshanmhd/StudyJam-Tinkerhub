@@ -23,10 +23,10 @@ interface LeaderboardProps {
 export function Leaderboard({ students, currentUserId, currentUserScore, viewMode = 'individual' }: LeaderboardProps) {
     const isTeamView = viewMode === 'team'
 
-    // In team view, students array is grouped/sorted by team_xp.
-    // Assuming each "student" row in team view represents a team (many users share the same team_id).
-    // Let's filter unique teams for the team view.
+    // In team view, deduplicate by team_id and sort by team_xp
     const uniqueTeams = Array.from(new Map(students.filter(s => s.team_id).map(s => [s.team_id, s])).values())
+        .sort((a, b) => b.team_xp - a.team_xp)
+
     const listToRender = isTeamView ? uniqueTeams : students
     const topFive = listToRender.slice(0, 5)
 
@@ -45,9 +45,11 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                         ? student.team_id === currentUserScore?.team_id
                         : student.user_id === currentUserId
 
-                    const level = getUserLevel(student.individual_xp)
                     const displayName = isTeamView ? student.team_name || 'Unknown Team' : student.name
                     const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+                    // For individual view: level is based on impact score (final_score)
+                    const level = !isTeamView ? getUserLevel(student.final_score) : null
 
                     return (
                         <div
@@ -71,13 +73,20 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                                 <p className={cn('text-sm font-medium truncate', isMe && 'text-primary')}>
                                     {displayName}
                                 </p>
-                                {!isTeamView && <p className="text-[11px] text-muted-foreground">Lv.{level.level} {level.title}</p>}
+                                {!isTeamView && level && (
+                                    <p className="text-[11px] text-muted-foreground">Lv.{level.level} {level.title}</p>
+                                )}
                             </div>
                             <div className="text-right shrink-0">
                                 <p className="text-sm font-bold text-foreground">
-                                    {viewMode === 'team' ? student.team_xp?.toLocaleString() : Math.round(student.final_score).toLocaleString()}
+                                    {isTeamView
+                                        ? student.team_xp.toLocaleString()
+                                        : Math.round(student.final_score).toLocaleString()
+                                    }
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">{viewMode === 'team' ? 'Team XP' : 'Impact'}</p>
+                                <p className="text-[10px] text-muted-foreground">
+                                    {isTeamView ? 'Team XP' : 'Impact'}
+                                </p>
                             </div>
                         </div>
                     )
@@ -104,7 +113,7 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                         </div>
                         <div className="text-right shrink-0">
                             <p className="text-sm font-bold">
-                                {isTeamView ? currentUserScore.team_xp?.toLocaleString() : Math.round(currentUserScore.final_score).toLocaleString()}
+                                {isTeamView ? currentUserScore.team_xp.toLocaleString() : Math.round(currentUserScore.final_score).toLocaleString()}
                             </p>
                             <p className="text-[10px] text-muted-foreground">{isTeamView ? 'Team XP' : 'Impact'}</p>
                         </div>
