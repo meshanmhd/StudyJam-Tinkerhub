@@ -4,22 +4,40 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
 import { createTask, reviewSubmission } from '../actions'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
-import { CheckCircle, XCircle, Plus, Loader2, ClipboardList, Clock, Hash } from 'lucide-react'
+import { CheckCircle, XCircle, Plus, Loader2, ClipboardList, Clock, Hash, Users, User } from 'lucide-react'
 
-interface Task { id: string; title: string; description?: string; xp_reward: number; deadline?: string; created_at: string }
+interface Task {
+    id: string
+    title: string
+    description?: string
+    xp_reward: number
+    task_type: 'individual' | 'team'
+    deadline?: string
+    created_at: string
+}
+
 interface Submission {
-    id: string; task_id: string; user_id: string; status: string; submitted_at: string; xp_given?: number;
-    task?: { title?: string; xp_reward?: number } | null;
-    user?: { name?: string; team?: { team_name?: string } | null } | null;
+    id: string; task_id: string; user_id: string; status: string; submitted_at: string; xp_given?: number
+    task?: { title?: string; xp_reward?: number; task_type?: string; deadline?: string } | null
+    user?: { name?: string; team?: { team_name?: string } | null } | null
 }
 
 interface TaskManagerClientProps {
     tasks: Task[]
     submissions: Submission[]
 }
+
+type SortKey = 'deadline' | 'submitted_at' | 'student' | 'task'
 
 const MAX_DESC = 300
 
@@ -31,9 +49,28 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
     const [localSubmissions, setLocalSubmissions] = useState(submissions)
     const [localTasks, setLocalTasks] = useState(tasks)
     const [desc, setDesc] = useState('')
+    const [taskType, setTaskType] = useState<'individual' | 'team'>('individual')
+    const [sortKey, setSortKey] = useState<SortKey>('deadline')
+
+    // XP prompt dialog
+    const [approveDialogSub, setApproveDialogSub] = useState<Submission | null>(null)
+    const [xpInput, setXpInput] = useState('')
 
     const pending = localSubmissions.filter(s => s.status === 'pending')
     const reviewed = localSubmissions.filter(s => s.status !== 'pending')
+
+    // Sort pending submissions
+    const sortedPending = [...pending].sort((a, b) => {
+        if (sortKey === 'deadline') {
+            const da = a.task?.deadline ? new Date(a.task.deadline).getTime() : 0
+            const db = b.task?.deadline ? new Date(b.task.deadline).getTime() : 0
+            return da - db
+        }
+        if (sortKey === 'submitted_at') return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
+        if (sortKey === 'student') return ((a.user as { name?: string } | null)?.name || '').localeCompare((b.user as { name?: string } | null)?.name || '')
+        if (sortKey === 'task') return ((a.task as { title?: string } | null)?.title || '').localeCompare((b.task as { title?: string } | null)?.title || '')
+        return 0
+    })
 
     const now = new Date()
     const activeTasks = localTasks.filter(t => !t.deadline || new Date(t.deadline) > now)
@@ -43,31 +80,48 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
         e.preventDefault()
         setCreating(true)
         const fd = new FormData(e.currentTarget)
+        fd.set('task_type', taskType)
         const result = await createTask(fd)
         if (result.error) {
             toast.error(result.error)
         } else {
             toast.success('Task created!')
-            // Optimistically prepend the new task to localTasks
-            if (result.task) {
-                setLocalTasks(prev => [result.task as Task, ...prev])
-            }
+            if (result.task) setLocalTasks(prev => [result.task as Task, ...prev])
             setShowForm(false)
             setDesc('')
-            // Refresh server data so student page also picks up the new task
+            setTaskType('individual')
             router.refresh()
         }
         setCreating(false)
     }
 
-    async function handleReview(sub: Submission, action: 'approved' | 'rejected') {
-        setReviewing(sub.id)
-        const xp = (sub.task as { xp_reward?: number } | null)?.xp_reward || 0
-        const result = await reviewSubmission(sub.id, action, xp, sub.task_id, sub.user_id)
+    function openApproveDialog(sub: Submission) {
+        setApproveDialogSub(sub)
+        setXpInput(String((sub.task as { xp_reward?: number } | null)?.xp_reward || 0))
+    }
+
+    async function handleConfirmApprove() {
+        if (!approveDialogSub) return
+        const xp = parseInt(xpInput) || 0
+        setReviewing(approveDialogSub.id)
+        setApproveDialogSub(null)
+        const result = await reviewSubmission(approveDialogSub.id, 'approved', xp, approveDialogSub.task_id, approveDialogSub.user_id)
         if (result.error) toast.error(result.error)
         else {
-            toast.success(action === 'approved' ? `Approved! +${xp} XP awarded` : 'Submission rejected.')
-            setLocalSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: action } : s))
+            toast.success(`Approved! +${xp} XP awarded`)
+            setLocalSubmissions(prev => prev.map(s => s.id === approveDialogSub!.id ? { ...s, status: 'approved', xp_given: xp } : s))
+            router.refresh()
+        }
+        setReviewing(null)
+    }
+
+    async function handleReject(sub: Submission) {
+        setReviewing(sub.id)
+        const result = await reviewSubmission(sub.id, 'rejected', 0, sub.task_id, sub.user_id)
+        if (result.error) toast.error(result.error)
+        else {
+            toast.success('Submission rejected.')
+            setLocalSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: 'rejected' } : s))
             router.refresh()
         }
         setReviewing(null)
@@ -79,7 +133,6 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
         <div className="space-y-6">
             {/* Task List + Create Form */}
             <div className="glass rounded-2xl border border-border/40 overflow-hidden">
-                {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-border/30">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -87,7 +140,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                         </div>
                         <div>
                             <h2 className="text-sm font-semibold">Tasks</h2>
-                            <p className="text-xs text-muted-foreground">{localTasks.length} active tasks</p>
+                            <p className="text-xs text-muted-foreground">{localTasks.length} tasks total</p>
                         </div>
                     </div>
                     <Button
@@ -106,33 +159,45 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                             {/* Title */}
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Title</Label>
-                                <input
-                                    id="title"
-                                    name="title"
-                                    required
-                                    placeholder="Build a REST API…"
-                                    className={inputCls}
-                                />
+                                <input id="title" name="title" required placeholder="Build a REST API…" className={inputCls} />
                             </div>
 
-                            {/* Description with char count */}
+                            {/* Description */}
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
                                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</Label>
-                                    <span className={`text-[10px] font-mono ${desc.length > MAX_DESC * 0.9 ? 'text-amber-400' : 'text-muted-foreground/50'}`}>
-                                        {desc.length}/{MAX_DESC}
-                                    </span>
+                                    <span className={`text-[10px] font-mono ${desc.length > MAX_DESC * 0.9 ? 'text-amber-400' : 'text-muted-foreground/50'}`}>{desc.length}/{MAX_DESC}</span>
                                 </div>
                                 <textarea
-                                    id="description"
-                                    name="description"
-                                    rows={3}
-                                    maxLength={MAX_DESC}
-                                    value={desc}
-                                    onChange={e => setDesc(e.target.value)}
+                                    id="description" name="description" rows={3} maxLength={MAX_DESC}
+                                    value={desc} onChange={e => setDesc(e.target.value)}
                                     placeholder="Describe what students need to do…"
                                     className="w-full px-3 py-2.5 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                                 />
+                            </div>
+
+                            {/* Task Type */}
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Type</Label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTaskType('individual')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${taskType === 'individual' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
+                                    >
+                                        <User size={14} /> Individual
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTaskType('team')}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${taskType === 'team' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
+                                    >
+                                        <Users size={14} /> Team
+                                    </button>
+                                </div>
+                                {taskType === 'team' && (
+                                    <p className="text-[11px] text-muted-foreground">XP will be awarded to the student&apos;s team, not individually.</p>
+                                )}
                             </div>
 
                             {/* XP + Deadline row */}
@@ -141,27 +206,16 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Reward</Label>
                                     <div className="relative">
                                         <Hash size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
-                                        <input
-                                            id="xp_reward"
-                                            name="xp_reward"
-                                            type="number"
-                                            required
-                                            min={1}
-                                            placeholder="25"
-                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
-                                        />
+                                        <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="25"
+                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all" />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Deadline</Label>
                                     <div className="relative">
                                         <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
-                                        <input
-                                            id="deadline"
-                                            name="deadline"
-                                            type="datetime-local"
-                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                                        />
+                                        <input id="deadline" name="deadline" type="datetime-local"
+                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all" />
                                     </div>
                                 </div>
                             </div>
@@ -170,7 +224,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                                 <Button type="submit" disabled={creating} size="sm" className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 text-xs h-8">
                                     {creating ? <><Loader2 size={13} className="animate-spin mr-1.5" />Creating…</> : <>Create Task</>}
                                 </Button>
-                                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(false); setDesc('') }} className="text-xs h-8">Cancel</Button>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(false); setDesc(''); setTaskType('individual') }} className="text-xs h-8">Cancel</Button>
                             </div>
                         </form>
                     </div>
@@ -184,10 +238,13 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                     {activeTasks.map(task => (
                         <div key={task.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-muted/10 transition-colors">
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">{task.title}</p>
-                                {task.description && (
-                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>
-                                )}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-medium">{task.title}</p>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${task.task_type === 'team' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                                        {task.task_type === 'team' ? 'Team' : 'Individual'}
+                                    </span>
+                                </div>
+                                {task.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>}
                                 {task.deadline && (
                                     <p className="text-xs text-muted-foreground/70 mt-0.5 flex items-center gap-1">
                                         <Clock size={10} /> Due: {formatDate(task.deadline)}
@@ -198,9 +255,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                         </div>
                     ))}
                     {activeTasks.length === 0 && (
-                        <div className="py-8 text-center">
-                            <p className="text-sm text-muted-foreground">No active tasks right now.</p>
-                        </div>
+                        <div className="py-8 text-center"><p className="text-sm text-muted-foreground">No active tasks right now.</p></div>
                     )}
 
                     {pastTasks.length > 0 && (
@@ -211,10 +266,13 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                             {pastTasks.map(task => (
                                 <div key={task.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-muted/10 transition-colors opacity-70 grayscale-[0.5]">
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium">{task.title}</p>
-                                        {task.description && (
-                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-medium">{task.title}</p>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${task.task_type === 'team' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                                                {task.task_type === 'team' ? 'Team' : 'Individual'}
+                                            </span>
+                                        </div>
+                                        {task.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>}
                                         {task.deadline && (
                                             <p className="text-xs text-rose-400/70 mt-0.5 flex items-center gap-1">
                                                 <Clock size={10} /> Ended: {formatDate(task.deadline)}
@@ -231,32 +289,57 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
 
             {/* Pending Submissions */}
             <div>
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3 mb-4 flex-wrap">
                     <h2 className="text-sm font-semibold">Pending Submissions</h2>
                     {pending.length > 0 && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 live-badge">
                             {pending.length} waiting
                         </span>
                     )}
+                    {/* Sort controls */}
+                    <div className="ml-auto flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">Sort:</span>
+                        {(['deadline', 'submitted_at', 'student', 'task'] as SortKey[]).map(key => (
+                            <button
+                                key={key}
+                                onClick={() => setSortKey(key)}
+                                className={`text-xs px-2 py-0.5 rounded-md border transition-all ${sortKey === key ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/30 text-muted-foreground hover:border-border/60'}`}
+                            >
+                                {key === 'deadline' ? 'By Deadline' : key === 'submitted_at' ? 'By Submitted' : key === 'student' ? 'By Student' : 'By Task'}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <div className="space-y-2">
-                    {pending.map(sub => (
+                    {sortedPending.map(sub => (
                         <div key={sub.id} className="glass rounded-xl px-4 py-3.5 border border-amber-500/20 flex items-center gap-4 hover:border-amber-500/30 transition-colors">
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">{(sub.task as { title?: string } | null)?.title}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-medium">{(sub.task as { title?: string } | null)?.title}</p>
+                                    {(sub.task as { task_type?: string } | null)?.task_type === 'team' ? (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-purple-500/10 text-purple-400 border-purple-500/20">Team</span>
+                                    ) : (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/20">Individual</span>
+                                    )}
+                                </div>
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                     {(sub.user as { name?: string } | null)?.name}
                                     {(sub.user as { team?: { team_name?: string } | null } | null)?.team?.team_name && (
                                         <> · {(sub.user as { team?: { team_name?: string } | null } | null)?.team?.team_name}</>
                                     )}
                                 </p>
+                                {(sub.task as { deadline?: string } | null)?.deadline && (
+                                    <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1 mt-0.5">
+                                        <Clock size={9} /> Due: {formatDate((sub.task as { deadline?: string })!.deadline!)}
+                                    </p>
+                                )}
                             </div>
                             <span className="text-sm font-bold text-amber-400 shrink-0">+{(sub.task as { xp_reward?: number } | null)?.xp_reward} XP</span>
                             <div className="flex gap-1.5 shrink-0">
                                 <Button
                                     size="sm" variant="ghost"
                                     disabled={reviewing === sub.id}
-                                    onClick={() => handleReview(sub, 'approved')}
+                                    onClick={() => openApproveDialog(sub)}
                                     className="h-8 px-3 gap-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 text-xs"
                                 >
                                     {reviewing === sub.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
@@ -265,7 +348,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                                 <Button
                                     size="sm" variant="ghost"
                                     disabled={reviewing === sub.id}
-                                    onClick={() => handleReview(sub, 'rejected')}
+                                    onClick={() => handleReject(sub)}
                                     className="h-8 px-3 gap-1 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs"
                                 >
                                     <XCircle size={12} /> Reject
@@ -285,7 +368,7 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                     <div className="mt-6">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Recently Reviewed</p>
                         <div className="space-y-1.5">
-                            {reviewed.slice(0, 5).map(sub => (
+                            {reviewed.slice(0, 8).map(sub => (
                                 <div key={sub.id} className="flex items-center gap-4 px-4 py-2.5 glass rounded-lg border border-border/20 opacity-70">
                                     <span className={`text-xs font-bold ${sub.status === 'approved' ? 'text-emerald-400' : 'text-rose-400'}`}>
                                         {sub.status === 'approved' ? '✓' : '✗'}
@@ -301,6 +384,44 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
                     </div>
                 )}
             </div>
+
+            {/* XP Prompt Dialog */}
+            <Dialog open={!!approveDialogSub} onOpenChange={(open) => { if (!open) setApproveDialogSub(null) }}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Award XP</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Approving submission for:</p>
+                            <p className="text-sm font-semibold mt-1">{(approveDialogSub?.task as { title?: string } | null)?.title}</p>
+                            <p className="text-xs text-muted-foreground">{(approveDialogSub?.user as { name?: string } | null)?.name}</p>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP to Award</Label>
+                            <div className="relative">
+                                <Hash size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={xpInput}
+                                    onChange={e => setXpInput(e.target.value)}
+                                    className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
+                                />
+                            </div>
+                        </div>
+                        <div className="bg-muted/20 rounded-lg px-3 py-2 text-xs text-muted-foreground">
+                            <span className="font-medium">Auto Reason:</span> {(approveDialogSub?.task as { title?: string } | null)?.title} — done
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" size="sm" onClick={() => setApproveDialogSub(null)}>Cancel</Button>
+                        <Button size="sm" onClick={handleConfirmApprove} className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/20">
+                            Confirm & Award XP
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

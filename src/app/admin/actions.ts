@@ -34,6 +34,7 @@ export async function createTask(formData: FormData) {
         title: formData.get('title') as string,
         description: formData.get('description') as string || null,
         xp_reward: parseInt(formData.get('xp_reward') as string),
+        task_type: (formData.get('task_type') as string) || 'individual',
         deadline: formData.get('deadline') as string || null,
         created_by: user.id,
     }).select().single()
@@ -60,15 +61,20 @@ export async function reviewSubmission(submissionId: string, action: 'approved' 
     if (error) return { error: error.message }
 
     if (action === 'approved') {
-        const { data: task } = await supabase.from('tasks').select('title').eq('id', taskId).single()
+        const { data: task } = await supabase.from('tasks').select('title, task_type').eq('id', taskId).single()
         const { data: userProfile } = await supabase.from('users').select('team_id').eq('id', userId).single()
 
+        const isTeamTask = task?.task_type === 'team'
+        const autoReason = `${task?.title || 'Task'} — done`
+
         await supabase.from('xp_logs').insert({
-            user_id: userId,
-            team_id: userProfile?.team_id || null,
+            // Individual task: award to user only (no team_id — avoids triggering team XP)
+            // Team task: award to team only (no user_id — avoids triggering individual XP)
+            user_id: isTeamTask ? null : userId,
+            team_id: isTeamTask ? (userProfile?.team_id || null) : null,
             category: 'task',
             xp_value: xpGiven,
-            reason: `Task approved: ${task?.title || taskId}`,
+            reason: autoReason,
         })
     }
 
@@ -214,36 +220,104 @@ export async function removeBadge(userBadgeId: string) {
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
-async function recalculateStreak(supabase: Awaited<ReturnType<typeof createClient>>, studentId: string) {
-    const today = new Date().toISOString().split('T')[0]
-    const { data: records } = await supabase
-        .from('attendance')
-        .select('date, status')
-        .eq('student_id', studentId)
-        .lte('date', today)
-        .order('date', { ascending: false })
+/**
+ * Streak state machine:
+ *
+ * PRESENT rules:
+ *   - No history / after reset  → streak = 1, state = active
+ *   - Same day (idempotent)     → no change
+ *   - gap = 1 AND state=active  → streak++, state = active  (normal)
+ *   - state = frozen, gap ≤ 2   → UNFREEZE, no increment (penalty day)
+ *                                  next consecutive day WILL get +1
+ *   - state = frozen, gap ≥ 3   → too long, reset → streak = 1, state = active
+ *   - state = active, gap ≥ 2   → edge case, reset → streak = 1
+ *
+ * ABSENT rules:
+ *   - state = active, gap from lastActivity = 1 → freeze (missed the very next day)
+ *   - state = frozen → reset (two consecutive misses)
+ *   - anything else → no change
+ */
+async function recalculateStreak(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    studentId: string,
+    attendanceDate: string,
+    status: 'present' | 'absent' | 'no_class'
+) {
+    if (status === 'no_class') return
 
-    if (!records) return
-
-    let streak = 0
-    let longest = 0
-    let current = 0
-
-    for (const r of records) {
-        if (r.status === 'no_class') continue
-        if (r.status === 'present') { streak++ } else { break }
-    }
-
-    for (const r of [...records].reverse()) {
-        if (r.status === 'no_class') continue
-        if (r.status === 'present') { current++; if (current > longest) longest = current }
-        else { current = 0 }
-    }
-
-    await supabase
+    const { data: currentUser } = await supabase
         .from('users')
-        .update({ streak_days: streak, longest_streak: Math.max(longest, streak) })
+        .select('streak_days, longest_streak, last_activity_date, streak_state')
         .eq('id', studentId)
+        .single()
+
+    if (!currentUser) return
+
+    const today = attendanceDate
+    const lastActivity = currentUser.last_activity_date as string | null
+    const currentStreak = currentUser.streak_days || 0
+    const longestStreak = currentUser.longest_streak || 0
+    const currentState = (currentUser.streak_state || 'active') as 'active' | 'frozen' | 'reset'
+
+    const msPerDay = 1000 * 60 * 60 * 24
+    const diffDays = lastActivity
+        ? Math.round((new Date(today).getTime() - new Date(lastActivity).getTime()) / msPerDay)
+        : null
+
+    // ── ABSENT branch ──────────────────────────────────────────────────────────
+    if (status === 'absent') {
+        if (!lastActivity) return // no streak history yet
+
+        if (currentState === 'active' && diffDays === 1) {
+            // Perfect streak yesterday, miss today → freeze
+            await supabase.from('users').update({ streak_state: 'frozen' }).eq('id', studentId)
+        } else if (currentState === 'frozen') {
+            // Was already frozen, missed again → full reset
+            await supabase.from('users').update({
+                streak_days: 0,
+                streak_state: 'reset',
+            }).eq('id', studentId)
+        }
+        // active with gap > 1 or reset state → no meaningful change
+        return
+    }
+
+    // ── PRESENT branch ─────────────────────────────────────────────────────────
+    if (lastActivity === today) return // already counted today (idempotent)
+
+    let newStreak: number
+    const newState: 'active' | 'frozen' | 'reset' = 'active'
+
+    if (!lastActivity || currentState === 'reset') {
+        // First ever attendance, or returning after a full reset
+        newStreak = 1
+    } else if (diffDays === 1 && currentState === 'active') {
+        // Normal consecutive day — earn +1
+        newStreak = currentStreak + 1
+    } else if (currentState === 'frozen') {
+        if (diffDays !== null && diffDays <= 2) {
+            // Returning the day after the missed (frozen) day:
+            // gap=2: attended Day X, missed Day X+1 (frozen), attending Day X+2
+            // → UNFREEZE but NO increment. Streak stays the same.
+            // The next consecutive day will earn +1 as normal.
+            newStreak = currentStreak
+        } else {
+            // Frozen and missed 2+ more days → reset, start at 1
+            newStreak = 1
+        }
+    } else {
+        // Active but gap ≥ 2 somehow (missed without being frozen) → reset
+        newStreak = 1
+    }
+
+    const newLongest = Math.max(longestStreak, newStreak)
+
+    await supabase.from('users').update({
+        streak_days: newStreak,
+        longest_streak: newLongest,
+        last_activity_date: today,
+        streak_state: newState,
+    }).eq('id', studentId)
 }
 
 export async function markAttendanceBulk(
@@ -266,12 +340,91 @@ export async function markAttendanceBulk(
         .upsert(rows, { onConflict: 'student_id,date' })
     if (error) return { error: error.message }
 
-    // Recalculate streaks in parallel
+    // Recalculate streaks for all non-no_class records
     await Promise.all(
         records
             .filter(r => r.status !== 'no_class')
-            .map(r => recalculateStreak(supabase, r.studentId))
+            .map(r => recalculateStreak(supabase, r.studentId, date, r.status))
     )
+
+    // ── Attendance XP ──────────────────────────────────────────────────────────
+    const presentStudentIds = records.filter(r => r.status === 'present').map(r => r.studentId)
+
+    if (presentStudentIds.length > 0) {
+        // Award individual +10 XP per present student (idempotent: check for same date + category)
+        for (const studentId of presentStudentIds) {
+            const { data: existing } = await supabase
+                .from('xp_logs')
+                .select('id')
+                .eq('user_id', studentId)
+                .eq('session_id', `attendance-${date}`)
+                .eq('category', 'attendance')
+                .maybeSingle()
+
+            if (!existing) {
+                await supabase.from('xp_logs').insert({
+                    user_id: studentId,
+                    team_id: null,
+                    category: 'attendance',
+                    xp_value: 10,
+                    reason: `Attendance streak — ${date}`,
+                    session_id: `attendance-${date}`,
+                })
+            }
+        }
+
+        // Award team +10 XP if ALL team members are present
+        // Get team_ids for present students
+        const { data: presentProfiles } = await supabase
+            .from('users')
+            .select('id, team_id')
+            .in('id', presentStudentIds)
+
+        if (presentProfiles) {
+            // Group present students by team
+            const teamsPresent = new Map<string, string[]>()
+            for (const p of presentProfiles) {
+                if (!p.team_id) continue
+                const existing = teamsPresent.get(p.team_id) || []
+                teamsPresent.set(p.team_id, [...existing, p.id])
+            }
+
+            // For each team that has at least one member present, check if ALL members are present
+            for (const [teamId, presentMembers] of teamsPresent.entries()) {
+                const { data: allTeamMembers } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('team_id', teamId)
+                    .eq('role', 'student')
+
+                if (!allTeamMembers) continue
+                const allIds = allTeamMembers.map(m => m.id)
+                const allPresent = allIds.every(id => presentMembers.includes(id))
+
+                if (allPresent && allIds.length > 0) {
+                    // Check idempotency for team XP
+                    const { data: existingTeamXp } = await supabase
+                        .from('xp_logs')
+                        .select('id')
+                        .eq('team_id', teamId)
+                        .eq('session_id', `attendance-team-${date}`)
+                        .eq('category', 'attendance')
+                        .maybeSingle()
+
+                    if (!existingTeamXp) {
+                        await supabase.from('xp_logs').insert({
+                            user_id: null,
+                            team_id: teamId,
+                            category: 'attendance',
+                            xp_value: 10,
+                            reason: `Full team attendance — ${date}`,
+                            session_id: `attendance-team-${date}`,
+                        })
+                    }
+                }
+            }
+        }
+    }
 
     revalidatePath('/admin/attendance')
     revalidatePath('/dashboard')
@@ -295,8 +448,6 @@ export async function markNoClassDay(date: string, studentIds: string[]) {
         .from('attendance')
         .upsert(rows, { onConflict: 'student_id,date' })
     if (error) return { error: error.message }
-
-    // No streak recalculation needed — no_class doesn't affect streak
 
     revalidatePath('/admin/attendance')
     return { success: true }

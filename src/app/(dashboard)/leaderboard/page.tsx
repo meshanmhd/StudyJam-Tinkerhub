@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Leaderboard } from '@/components/dashboard/leaderboard'
+import { RefreshButton } from '@/components/ui/refresh-button'
 import type { UserScore } from '@/types'
 
 export default async function LeaderboardPage() {
@@ -25,9 +26,12 @@ export default async function LeaderboardPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-2xl font-bold">Leaderboard</h1>
-                <p className="text-muted-foreground text-sm mt-1">Individual ranked by Impact Score · Teams ranked by Team XP</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold">Leaderboard</h1>
+                    <p className="text-muted-foreground text-sm mt-1">Individual ranked by Impact Score · Teams ranked by Team XP</p>
+                </div>
+                <RefreshButton />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

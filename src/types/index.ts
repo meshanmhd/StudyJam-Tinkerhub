@@ -36,6 +36,8 @@ export interface User {
     individual_xp: number
     streak_days: number
     longest_streak: number
+    last_activity_date?: string
+    streak_state: 'active' | 'frozen' | 'reset'
     created_at: string
     team?: Team
 }
@@ -69,6 +71,7 @@ export interface Task {
     title: string
     description?: string
     xp_reward: number
+    task_type: 'individual' | 'team'
     deadline?: string
     created_by?: string
     created_at: string

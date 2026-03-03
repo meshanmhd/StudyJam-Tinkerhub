@@ -12,6 +12,7 @@ import {
     Medal,
     CalendarCheck,
     UsersRound,
+    ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/auth/actions'
@@ -28,6 +29,7 @@ interface NavItem {
 
 const studentNav: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/tasks', label: 'My Tasks', icon: ClipboardList },
     { href: '/team', label: 'My Team', icon: Users2 },
     { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
 ]

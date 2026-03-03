@@ -5,6 +5,7 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { TaskCard } from '@/components/dashboard/task-card'
 import { BadgeGrid } from '@/components/dashboard/badge-grid'
 import { RealtimeLeaderboard } from '@/components/dashboard/realtime-leaderboard'
+import { RefreshButton } from '@/components/ui/refresh-button'
 import type { Task, TaskSubmission, UserBadge, UserScore } from '@/types'
 
 export default async function DashboardPage() {
@@ -13,13 +14,12 @@ export default async function DashboardPage() {
     if (!user) redirect('/login')
 
     // Parallel data fetching
-    const [profileRes, scoresRes, tasksRes, submissionsRes, badgesRes, teamsRes] = await Promise.all([
+    const [profileRes, scoresRes, tasksRes, submissionsRes, badgesRes] = await Promise.all([
         supabase.from('users').select('*, team:teams(*)').eq('id', user.id).single(),
         supabase.from('user_scores').select('*').order('final_score', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('task_submissions').select('*').eq('user_id', user.id),
         supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', user.id),
-        supabase.from('teams').select('*').order('team_xp', { ascending: false }).limit(3),
     ])
 
     const profile = profileRes.data
@@ -31,7 +31,6 @@ export default async function DashboardPage() {
     const tasks: Task[] = tasksRes.data || []
     const submissions: TaskSubmission[] = submissionsRes.data || []
     const userBadges: UserBadge[] = badgesRes.data || []
-    const topTeams = teamsRes.data || []
 
     const currentUserScore = scores.find(s => s.user_id === user.id)
     const submissionMap = Object.fromEntries(submissions.map(s => [s.task_id, s]))
@@ -66,8 +65,9 @@ export default async function DashboardPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold">
-                        Welcome back, {profile.name.split(' ')[0]} 👋
+                    <p className="text-sm text-muted-foreground font-medium">Welcome back</p>
+                    <h1 className="text-4xl font-bold mt-0.5">
+                        {profile.name.split(' ')[0]}
                     </h1>
                     {profile.team?.team_name && (
                         <p className="text-muted-foreground text-sm mt-1">
@@ -75,6 +75,7 @@ export default async function DashboardPage() {
                         </p>
                     )}
                 </div>
+                <RefreshButton />
             </div>
 
             {/* Main Layout: Left 60% (col-span-7) / Right 40% (col-span-5) */}
@@ -88,29 +89,43 @@ export default async function DashboardPage() {
 
                     {/* Streak cards */}
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Current Streak */}
-                        {profile.streak_days > 0 ? (
-                            <div className="glass rounded-2xl p-4 border border-orange-500/20 flex flex-col justify-center items-center h-full">
-                                <p className="text-3xl text-center streak-glow mb-1">🔥</p>
-                                <p className="text-2xl font-bold text-orange-400 text-center">{profile.streak_days}</p>
-                                <p className="text-xs text-center text-muted-foreground mt-0.5">Current Streak</p>
-                                <p className="text-[10px] text-center text-orange-400/70 mt-0.5">days in a row</p>
-                            </div>
-                        ) : (
-                            <div className="glass rounded-2xl p-4 border border-border/20 flex flex-col justify-center items-center h-full">
-                                <p className="text-3xl text-center mb-1">💤</p>
-                                <p className="text-2xl font-bold text-muted-foreground text-center">0</p>
-                                <p className="text-xs text-center text-muted-foreground mt-0.5">Current Streak</p>
-                                <p className="text-[10px] text-center text-muted-foreground/60 mt-0.5">Start attending!</p>
-                            </div>
-                        )}
+                        {/* Current Streak — three states: active / frozen / reset */}
+                        {(() => {
+                            const state = (profile as { streak_state?: string }).streak_state || 'active'
+                            const days = profile.streak_days
+
+                            if (state === 'frozen') return (
+                                <div className="glass rounded-2xl p-4 border border-blue-500/30 flex flex-col justify-center items-center h-full">
+                                    <p className="text-3xl text-center mb-1">❄️</p>
+                                    <p className="text-2xl font-bold text-blue-400 text-center">{days}</p>
+                                    <p className="text-xs text-center text-blue-400 font-medium mt-0.5">Streak Frozen</p>
+                                    <p className="text-[10px] text-center text-muted-foreground/60 mt-0.5">Attend today to keep it!</p>
+                                </div>
+                            )
+                            if (state === 'reset' || days === 0) return (
+                                <div className="glass rounded-2xl p-4 border border-rose-500/20 flex flex-col justify-center items-center h-full">
+                                    <p className="text-3xl text-center mb-1">💀</p>
+                                    <p className="text-2xl font-bold text-rose-400 text-center">0</p>
+                                    <p className="text-xs text-center text-rose-400 font-medium mt-0.5">Streak Reset</p>
+                                    <p className="text-[10px] text-center text-muted-foreground/60 mt-0.5">Start fresh today!</p>
+                                </div>
+                            )
+                            return (
+                                <div className="glass rounded-2xl p-4 border border-orange-500/20 flex flex-col justify-center items-center h-full">
+                                    <p className="text-3xl text-center streak-glow mb-1">🔥</p>
+                                    <p className="text-2xl font-bold text-orange-400 text-center">{days}</p>
+                                    <p className="text-xs text-center text-orange-400/70 mt-0.5">Days in a row</p>
+                                    <p className="text-[10px] text-center text-muted-foreground/60 mt-0.5">Your Current Streak</p>
+                                </div>
+                            )
+                        })()}
 
                         {/* Longest Streak */}
                         <div className="glass rounded-2xl p-4 border border-amber-500/20 flex flex-col justify-center items-center h-full">
                             <p className="text-3xl text-center mb-1">🏆</p>
                             <p className="text-2xl font-bold text-amber-400 text-center">{profile.longest_streak}</p>
-                            <p className="text-xs text-center text-muted-foreground mt-0.5">Best Streak</p>
-                            <p className="text-[10px] text-center text-amber-400/70 mt-0.5">personal record</p>
+                            <p className="text-xs text-center text-amber-400/70 mt-0.5">Personal Best</p>
+                            <p className="text-[10px] text-center text-muted-foreground/60 mt-0.5">Your Overall Best</p>
                         </div>
                     </div>
 
@@ -192,26 +207,7 @@ export default async function DashboardPage() {
                             currentUserId={user.id}
                         />
 
-                        {/* Top Teams */}
-                        {topTeams.length > 0 && (
-                            <div className="mt-8">
-                                <p className="text-sm font-medium text-muted-foreground mb-3">Top Teams</p>
-                                <div className="space-y-2">
-                                    {topTeams.map((team, i) => (
-                                        <div key={team.id} className="flex items-center gap-3 glass px-4 py-2.5 rounded-xl border border-border/30 hover:border-border/60 transition-colors">
-                                            <span className="text-sm font-bold text-muted-foreground w-5">{['1', '2', '3'][i] || i + 1}</span>
-                                            <p className="flex-1 text-sm font-medium">{team.team_name}</p>
-                                            {team.weekly_title && (
-                                                <span className="text-xs text-primary px-2 py-0.5 bg-primary/10 rounded-md">
-                                                    {team.weekly_title}
-                                                </span>
-                                            )}
-                                            <p className="text-sm font-bold text-amber-400">{team.team_xp.toLocaleString()} XP</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+
                     </div>
 
                     {/* Badges below everything */}

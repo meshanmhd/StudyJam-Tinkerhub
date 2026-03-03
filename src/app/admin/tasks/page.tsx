@@ -7,7 +7,7 @@ export default async function TaskManagerPage() {
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase
             .from('task_submissions')
-            .select('*, task:tasks(title, xp_reward), user:users(name, team:teams(team_name))')
+            .select('*, task:tasks(title, xp_reward, task_type, deadline), user:users(name, team:teams(team_name))')
             .order('submitted_at', { ascending: false }),
     ])
 
