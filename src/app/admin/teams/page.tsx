@@ -13,7 +13,10 @@ export default async function TeamsPage() {
         supabase.from('teams').select('id, team_name, team_xp').order('team_name'),
     ])
 
-    const students = studentsRes.data || []
+    const students = (studentsRes.data || []).map((s: any) => ({
+        ...s,
+        team: Array.isArray(s.team) ? s.team[0] || null : s.team || null,
+    }))
     const teams = teamsRes.data || []
 
     return (
