@@ -20,9 +20,10 @@ import { useRouter } from 'next/navigation'
 
 interface EditProfileDialogProps {
     currentName: string
+    children?: React.ReactNode
 }
 
-export function EditProfileDialog({ currentName }: EditProfileDialogProps) {
+export function EditProfileDialog({ currentName, children }: EditProfileDialogProps) {
     const [name, setName] = useState(currentName)
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
@@ -48,9 +49,13 @@ export function EditProfileDialog({ currentName }: EditProfileDialogProps) {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                    <Settings className="h-4 w-4" />
-                </Button>
+                {children ? (
+                    children
+                ) : (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={onSubmit}>

@@ -169,24 +169,24 @@ export function AttendanceClient({
     return (
         <div className="space-y-5">
             {/* Action bar */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 {/* Legend */}
-                <div className="flex items-center gap-5 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
                         <span className="w-4 h-4 rounded-sm bg-emerald-500/80 inline-block" /> Present
                     </span>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
                         <span className="w-4 h-4 rounded-sm bg-red-500/80 inline-block" /> Absent
                     </span>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
                         <span className="w-4 h-4 rounded-sm bg-blue-500/80 inline-block" /> No Class
                     </span>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
                         <span className="w-4 h-4 rounded-sm bg-muted/30 border border-border/40 inline-block" /> Unmarked
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button
                         variant="outline"
                         size="sm"
@@ -208,11 +208,11 @@ export function AttendanceClient({
             </div>
 
             {/* View-only grid */}
-            <div className="rounded-xl border border-border/40 overflow-x-auto bg-card/60">
-                <table className="w-full min-w-max text-sm">
+            <div className="rounded-xl border border-border/40 overflow-x-auto bg-card/60 relative">
+                <table className="w-full min-w-[max-content] text-sm text-left border-collapse">
                     <thead>
                         <tr className="border-b border-border/30 bg-muted/20">
-                            <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-52">Student</th>
+                            <th className="sticky left-0 z-10 bg-muted px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-[140px] max-w-[180px] shadow-[1px_0_0_0_rgba(255,255,255,0.1)]">Student</th>
                             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
                                 <th
                                     key={day}
@@ -230,8 +230,8 @@ export function AttendanceClient({
                     <tbody className="divide-y divide-border/20">
                         {students.map(student => (
                             <tr key={student.id} className="hover:bg-muted/10 transition-colors">
-                                <td className="px-4 py-2.5">
-                                    <p className="text-sm font-medium">{student.name}</p>
+                                <td className="sticky left-0 z-10 bg-card px-4 py-2.5 shadow-[1px_0_0_0_rgba(255,255,255,0.1)] truncate max-w-[180px]">
+                                    <p className="text-sm font-medium truncate">{student.name}</p>
                                 </td>
                                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
                                     const dateStr = buildDateStr(year, month, day)

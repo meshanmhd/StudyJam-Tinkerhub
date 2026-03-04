@@ -41,7 +41,7 @@ export default async function LoginPage() {
             </div>
 
             {/* Right side form */}
-            <div className="flex-1 flex items-center justify-center p-6 md:p-10 relative">
+            <div className="flex-1 flex items-center justify-center p-5 lg:p-10 relative">
                 <div className="w-full max-w-[380px] relative z-10">
                     <LoginForm />
                 </div>
