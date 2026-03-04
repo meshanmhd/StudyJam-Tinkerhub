@@ -8,8 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Zap, RotateCcw, Keyboard } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
 type LetterState = 'correct' | 'present' | 'absent' | 'empty' | 'tbd'
+
+const KEYBOARD_ROWS = [
+    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+    ['Enter', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫']
+]
 
 interface TileData {
     letter: string
@@ -250,6 +255,11 @@ export function WordleGame({
             return
         }
 
+        if (key === '⌫') {
+            handleKey('Backspace')
+            return
+        }
+
         if (/^[A-Za-z]$/.test(key)) {
             const upper = key.toUpperCase()
             setCurrentTiles(prev => {
@@ -358,19 +368,11 @@ export function WordleGame({
 
             {/* Instruction hint */}
             <p className="text-xs text-muted-foreground text-center">
-                Type a {wordLen}-letter word and press <kbd className="px-1.5 py-0.5 rounded bg-muted/30 border border-border/40 text-[11px] font-mono">Enter</kbd>
+                Guess the {wordLen}-letter word!
             </p>
-            {/* Mobile tap-to-type hint */}
-            <button
-                onClick={ensureFocused}
-                className="sm:hidden flex items-center gap-1.5 text-xs text-primary border border-primary/30 bg-primary/10 px-3 py-1.5 rounded-full"
-            >
-                <Keyboard size={12} />
-                Tap to type
-            </button>
 
             {/* Game Grid */}
-            <div className="grid gap-1.5" style={{ gridTemplateRows: `repeat(${MAX_GUESSES}, 1fr)` }}>
+            <div className="grid gap-1.5 mb-6" style={{ gridTemplateRows: `repeat(${MAX_GUESSES}, 1fr)` }}>
                 {displayBoard.map((row, rowIdx) => (
                     <div
                         key={rowIdx}
@@ -391,8 +393,43 @@ export function WordleGame({
                 ))}
             </div>
 
+            {/* On-Screen Keyboard */}
+            <div className="flex flex-col gap-2 w-full max-w-[500px] px-2 touch-manipulation">
+                {KEYBOARD_ROWS.map((row, rIdx) => (
+                    <div key={rIdx} className="flex justify-center gap-1.5">
+                        {row.map((key) => {
+                            const state = keyStates[key.toLowerCase()] || keyStates[key.toUpperCase()]
+                            let bgClass = 'bg-muted text-foreground'
+                            if (state === 'correct') bgClass = 'bg-[#6aaa64] text-white'
+                            else if (state === 'present') bgClass = 'bg-[#c9b458] text-white'
+                            else if (state === 'absent') bgClass = 'bg-[#3a3a3c] text-white'
+
+                            const isSpecial = key === 'Enter' || key === '⌫'
+
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        handleKey(key)
+                                    }}
+                                    className={`
+                                        h-12 sm:h-14 rounded font-bold transition-colors active:scale-95 flex items-center justify-center
+                                        ${isSpecial ? 'px-3 sm:px-4 text-[11px] sm:text-xs' : 'flex-1 max-w-[40px] sm:max-w-[45px] text-sm sm:text-base'}
+                                        ${bgClass}
+                                    `}
+                                >
+                                    {key}
+                                </button>
+                            )
+                        })}
+                    </div>
+                ))}
+            </div>
+
             {isSubmitting && (
-                <p className="text-xs text-muted-foreground animate-pulse">Submitting result…</p>
+                <p className="text-xs text-muted-foreground animate-pulse mt-4">Submitting result…</p>
             )}
         </div>
     )
