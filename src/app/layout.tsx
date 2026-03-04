@@ -12,6 +12,15 @@ export const metadata: Metadata = {
   title: 'Tinkerhub Studyjam',
   description: 'Track your learning journey, earn XP, level up, and collaborate with your team in a gamified study environment.',
   keywords: 'study jam, gamified learning, XP, leaderboard, collaboration',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black',
+    title: 'StudyJam',
+  },
+  icons: {
+    apple: '/icons/icon-192x192.png',
+  },
 }
 
 export const viewport: Viewport = {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { submitGameResult } from '@/app/admin/actions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Zap, RotateCcw } from 'lucide-react'
+import { Zap, RotateCcw, Keyboard } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -94,8 +94,8 @@ function Tile({
     return (
         <div
             className={`
-                w-14 h-14 flex items-center justify-center
-                border-2 text-xl font-bold uppercase select-none
+                w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center
+                border-2 text-base sm:text-xl font-bold uppercase select-none
                 transition-all duration-100
                 ${bgMap[state]}
                 ${animClass || ''}
@@ -132,6 +132,7 @@ export function WordleGame({
 }) {
     const router = useRouter()
     const wordLen = targetWord.length
+    const hiddenInputRef = useRef<HTMLInputElement>(null)
 
     const [board, setBoard] = useState<TileData[][]>(() =>
         Array.from({ length: MAX_GUESSES }, () =>
@@ -260,7 +261,7 @@ export function WordleGame({
         }
     }, [gameState, isValidating, currentTiles, currentRow, wordLen, targetWord, board, gameId])
 
-    // Physical keyboard support only
+    // Physical keyboard + mobile keyboard support
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
             if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -271,6 +272,11 @@ export function WordleGame({
         window.addEventListener('keydown', onKeyDown)
         return () => window.removeEventListener('keydown', onKeyDown)
     }, [handleKey])
+
+    // Keep hidden input focused for mobile keyboard
+    function ensureFocused() {
+        hiddenInputRef.current?.focus()
+    }
 
     const displayBoard = board.map((row, rowIdx) => {
         if (rowIdx === currentRow) {
@@ -286,7 +292,27 @@ export function WordleGame({
     const isWon = gameState === 'won'
 
     return (
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-6" onClick={ensureFocused}>
+            {/* Hidden input to trigger mobile keyboards */}
+            <input
+                ref={hiddenInputRef}
+                className="fixed opacity-0 pointer-events-none w-0 h-0"
+                inputMode="text"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey || e.altKey) return
+                    if (e.key === 'Enter') handleKey('Enter')
+                    else if (e.key === 'Backspace') handleKey('Backspace')
+                    else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key)
+                }}
+                onChange={() => {
+                    // Keep value empty — we capture keys via onKeyDown
+                    if (hiddenInputRef.current) hiddenInputRef.current.value = ''
+                }}
+            />
             {/* Toast */}
             {invalidMsg && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background text-sm font-semibold px-4 py-2 rounded-lg shadow-xl">
@@ -334,6 +360,14 @@ export function WordleGame({
             <p className="text-xs text-muted-foreground text-center">
                 Type a {wordLen}-letter word and press <kbd className="px-1.5 py-0.5 rounded bg-muted/30 border border-border/40 text-[11px] font-mono">Enter</kbd>
             </p>
+            {/* Mobile tap-to-type hint */}
+            <button
+                onClick={ensureFocused}
+                className="sm:hidden flex items-center gap-1.5 text-xs text-primary border border-primary/30 bg-primary/10 px-3 py-1.5 rounded-full"
+            >
+                <Keyboard size={12} />
+                Tap to type
+            </button>
 
             {/* Game Grid */}
             <div className="grid gap-1.5" style={{ gridTemplateRows: `repeat(${MAX_GUESSES}, 1fr)` }}>
