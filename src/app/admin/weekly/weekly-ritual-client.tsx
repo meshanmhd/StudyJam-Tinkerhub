@@ -30,6 +30,7 @@ export function WeeklyRitualClient({ teams, students }: WeeklyRitualClientProps)
     // ── Individual Highlight ──
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
     const [highlightText, setHighlightText] = useState('')
+    const [searchQuery, setSearchQuery] = useState('')
     const [highlightLoading, setHighlightLoading] = useState(false)
     const [clearingId, setClearingId] = useState<string | null>(null)
 
@@ -62,6 +63,8 @@ export function WeeklyRitualClient({ teams, students }: WeeklyRitualClientProps)
         else toast.success('Highlight cleared')
         setClearingId(null)
     }
+
+    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -143,9 +146,15 @@ export function WeeklyRitualClient({ teams, students }: WeeklyRitualClientProps)
                 </div>
 
                 <div className="p-5 space-y-4">
+                    <Input
+                        placeholder="Search students..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="h-8 text-sm"
+                    />
                     {/* Student selector rows */}
                     <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
-                        {students.map(student => {
+                        {filteredStudents.map(student => {
                             const initials = student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
                             const currentHighlight = student.user?.weekly_highlight
                             const isSelected = selectedStudentId === student.user_id

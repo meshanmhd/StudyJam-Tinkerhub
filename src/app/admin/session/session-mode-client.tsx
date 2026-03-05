@@ -29,6 +29,7 @@ interface SessionModeClientProps {
 export function SessionModeClient({ students, teams, recentLogs }: SessionModeClientProps) {
     const [mode, setMode] = useState<'individual' | 'team'>('individual')
     const [targetId, setTargetId] = useState('')
+    const [searchQuery, setSearchQuery] = useState('')
     const [loading, setLoading] = useState<string | null>(null)
     const [logs, setLogs] = useState(recentLogs)
 
@@ -42,6 +43,9 @@ export function SessionModeClient({ students, teams, recentLogs }: SessionModeCl
         else toast.success(`${btn.label} XP awarded!`)
         setLoading(null)
     }
+
+    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredTeams = teams.filter(t => t.team_name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -69,10 +73,19 @@ export function SessionModeClient({ students, teams, recentLogs }: SessionModeCl
                         <SelectTrigger className="bg-muted/40 border-border/50">
                             <SelectValue placeholder={`Choose a ${mode}...`} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent position="popper">
+                            <div className="p-2 sticky top-0 bg-background z-10 border-b border-border/40">
+                                <Input
+                                    placeholder={`Search ${mode}...`}
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    onKeyDown={e => e.stopPropagation()}
+                                    className="h-8 text-sm"
+                                />
+                            </div>
                             {mode === 'individual'
-                                ? students.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)
-                                : teams.map(t => <SelectItem key={t.id} value={t.id}>{t.team_name}</SelectItem>)
+                                ? filteredStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)
+                                : filteredTeams.map(t => <SelectItem key={t.id} value={t.id}>{t.team_name}</SelectItem>)
                             }
                         </SelectContent>
                     </Select>

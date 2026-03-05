@@ -13,8 +13,8 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { createTeam, removeStudentFromTeam, deleteTeam } from '../actions'
-import { Plus, Loader2, X, Users2, AlertTriangle, Trash2 } from 'lucide-react'
+import { createTeam, addStudentsToTeam, removeStudentFromTeam, deleteTeam } from '../actions'
+import { Plus, Loader2, X, Users2, AlertTriangle, Trash2, UserPlus } from 'lucide-react'
 
 interface Student {
     id: string
@@ -45,10 +45,17 @@ export function TeamManagerClient({ students: initialStudents, teams: initialTea
     const [createOpen, setCreateOpen] = useState(false)
     const [teamName, setTeamName] = useState('')
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
+    const [searchQuery, setSearchQuery] = useState('')
     const [creating, setCreating] = useState(false)
 
     const [removingMember, setRemovingMember] = useState<string | null>(null)
     const [deletingTeam, setDeletingTeam] = useState<string | null>(null)
+
+    // Add member dialog
+    const [addMemberToTeamId, setAddMemberToTeamId] = useState<string | null>(null)
+    const [addSearchQuery, setAddSearchQuery] = useState('')
+    const [addSelectedIds, setAddSelectedIds] = useState<string[]>([])
+    const [adding, setAdding] = useState(false)
 
     function toggleMember(studentId: string) {
         setSelectedMemberIds(prev =>
@@ -112,6 +119,32 @@ export function TeamManagerClient({ students: initialStudents, teams: initialTea
     // Group students by team
     const unassigned = students.filter(s => !s.team_id)
 
+    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredUnassigned = unassigned.filter(s => s.name.toLowerCase().includes(addSearchQuery.toLowerCase()))
+
+    async function handleAddMembers() {
+        if (!addMemberToTeamId) return
+        if (addSelectedIds.length === 0) return toast.error('Select at least one student')
+
+        setAdding(true)
+        const team = teams.find(t => t.id === addMemberToTeamId)
+        const result = await addStudentsToTeam(addMemberToTeamId, addSelectedIds)
+        if (result.error) {
+            toast.error(result.error)
+        } else {
+            toast.success(`Students added to team!`)
+            setStudents(prev => prev.map(s =>
+                addSelectedIds.includes(s.id)
+                    ? { ...s, team_id: addMemberToTeamId, team: { id: addMemberToTeamId, team_name: team?.team_name || '' } }
+                    : s
+            ))
+            setAddSelectedIds([])
+            setAddMemberToTeamId(null)
+            router.refresh()
+        }
+        setAdding(false)
+    }
+
     return (
         <div className="space-y-6">
             {/* Top action bar */}
@@ -144,18 +177,29 @@ export function TeamManagerClient({ students: initialStudents, teams: initialTea
                                         {members.length} member{members.length !== 1 ? 's' : ''} · {team.team_xp.toLocaleString()} XP
                                     </p>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteTeam(team.id, team.team_name)}
-                                    disabled={deletingTeam === team.id}
-                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                >
-                                    {deletingTeam === team.id
-                                        ? <Loader2 size={14} className="animate-spin" />
-                                        : <Trash2 size={14} />
-                                    }
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setAddMemberToTeamId(team.id)}
+                                        className="h-8 gap-1.5 px-2 text-primary"
+                                    >
+                                        <UserPlus size={14} />
+                                        <span className="hidden sm:inline">Add</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteTeam(team.id, team.team_name)}
+                                        disabled={deletingTeam === team.id}
+                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                        {deletingTeam === team.id
+                                            ? <Loader2 size={14} className="animate-spin" />
+                                            : <Trash2 size={14} />
+                                        }
+                                    </Button>
+                                </div>
                             </div>
                             {/* Members */}
                             <div className="divide-y divide-border/20">
@@ -236,7 +280,7 @@ export function TeamManagerClient({ students: initialStudents, teams: initialTea
             </div>
 
             {/* Create Team Dialog */}
-            <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setTeamName(''); setSelectedMemberIds([]) } }}>
+            <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setTeamName(''); setSelectedMemberIds([]); setSearchQuery('') } }}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Create New Team</DialogTitle>
@@ -252,8 +296,14 @@ export function TeamManagerClient({ students: initialStudents, teams: initialTea
                         </div>
                         <div className="space-y-2">
                             <Label>Select Members ({selectedMemberIds.length} selected)</Label>
+                            <Input
+                                placeholder="Search students..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="h-8 text-sm mb-2"
+                            />
                             <div className="max-h-64 overflow-y-auto space-y-1 rounded-xl border border-border/40 p-2 bg-muted/10">
-                                {students.map(student => {
+                                {filteredStudents.map(student => {
                                     const isSelected = selectedMemberIds.includes(student.id)
                                     const alreadyInTeam = !!student.team_id && !selectedMemberIds.includes(student.id)
                                     return (
@@ -292,6 +342,60 @@ export function TeamManagerClient({ students: initialStudents, teams: initialTea
                         <Button onClick={handleCreateTeam} disabled={creating}>
                             {creating ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
                             Create Team
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Member Dialog */}
+            <Dialog open={!!addMemberToTeamId} onOpenChange={(open) => { if (!open) { setAddMemberToTeamId(null); setAddSelectedIds([]); setAddSearchQuery('') } }}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Add Members to Team</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label>Select Unassigned Students ({addSelectedIds.length} selected)</Label>
+                            <Input
+                                placeholder="Search unassigned students..."
+                                value={addSearchQuery}
+                                onChange={e => setAddSearchQuery(e.target.value)}
+                                className="h-8 text-sm mb-2"
+                            />
+                            <div className="max-h-64 overflow-y-auto space-y-1 rounded-xl border border-border/40 p-2 bg-muted/10">
+                                {filteredUnassigned.map(student => {
+                                    const isSelected = addSelectedIds.includes(student.id)
+                                    return (
+                                        <button
+                                            key={student.id}
+                                            type="button"
+                                            onClick={() => setAddSelectedIds(prev => prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id])}
+                                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all ${isSelected
+                                                ? 'bg-primary/15 border border-primary/30'
+                                                : 'hover:bg-muted/30 border border-transparent'
+                                                }`}
+                                        >
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary' : 'border-border/60'}`}>
+                                                {isSelected && <span className="text-primary-foreground text-[10px] font-bold">✓</span>}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium">{student.name}</p>
+                                                <p className="text-[11px] text-muted-foreground">{student.individual_xp.toLocaleString()} XP</p>
+                                            </div>
+                                        </button>
+                                    )
+                                })}
+                                {unassigned.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">No unassigned students available.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddMemberToTeamId(null)}>Cancel</Button>
+                        <Button onClick={handleAddMembers} disabled={adding}>
+                            {adding ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
+                            Add to Team
                         </Button>
                     </DialogFooter>
                 </DialogContent>

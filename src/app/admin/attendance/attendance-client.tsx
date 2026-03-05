@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
     Dialog,
@@ -78,6 +79,7 @@ export function AttendanceClient({
 
     // ── Mark Attendance Dialog ──
     const [markOpen, setMarkOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
     const [selectedDate, setSelectedDate] = useState(() => {
         const t = new Date()
         return buildDateStr(t.getFullYear(), t.getMonth() + 1, t.getDate())
@@ -108,6 +110,7 @@ export function AttendanceClient({
             init[s.id] = existing !== 'absent' // present (or no_class→treat as present tick)
         }
         setPresentMap(init)
+        setSearchQuery('')
         setMarkOpen(true)
     }
 
@@ -165,6 +168,8 @@ export function AttendanceClient({
 
     const isCurrentMonth = today.getMonth() + 1 === month && today.getFullYear() === year
     const todayDay = today.getDate()
+
+    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return (
         <div className="space-y-5">
@@ -324,8 +329,14 @@ export function AttendanceClient({
                                     >All Absent</button>
                                 </div>
                             </div>
+                            <Input
+                                placeholder="Search students..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="h-8 text-sm"
+                            />
                             <div className="max-h-72 overflow-y-auto rounded-lg border border-border/40 divide-y divide-border/20">
-                                {students.map(student => {
+                                {filteredStudents.map(student => {
                                     const isPresent = presentMap[student.id] !== false
                                     return (
                                         <label

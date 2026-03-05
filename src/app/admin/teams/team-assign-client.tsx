@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { assignTeam } from '../actions'
 import { toast } from 'sonner'
@@ -32,6 +33,7 @@ export function TeamAssignClient({ students, teams }: TeamAssignClientProps) {
     const router = useRouter()
     const [pending, setPending] = useState<string | null>(null)
     const [localStudents, setLocalStudents] = useState(students)
+    const [searchQuery, setSearchQuery] = useState('')
 
     async function handleAssign(studentId: string, teamId: string) {
         setPending(studentId)
@@ -55,6 +57,8 @@ export function TeamAssignClient({ students, teams }: TeamAssignClientProps) {
 
     const assigned = localStudents.filter(s => s.team_id)
     const unassigned = localStudents.filter(s => !s.team_id)
+    const filteredUnassigned = unassigned.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredAll = localStudents.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return (
         <div className="space-y-6">
@@ -87,7 +91,7 @@ export function TeamAssignClient({ students, teams }: TeamAssignClientProps) {
                         </div>
                     </div>
                     <div className="divide-y divide-border/20">
-                        {unassigned.map(student => (
+                        {filteredUnassigned.map(student => (
                             <StudentRow
                                 key={student.id}
                                 student={student}
@@ -111,8 +115,16 @@ export function TeamAssignClient({ students, teams }: TeamAssignClientProps) {
                         <p className="text-xs text-muted-foreground">Assign or reassign team membership</p>
                     </div>
                 </div>
+                <div className="px-5 py-3 border-b border-border/30 bg-muted/5">
+                    <Input
+                        placeholder="Search students..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="max-w-md h-9"
+                    />
+                </div>
                 <div className="divide-y divide-border/20">
-                    {localStudents.map(student => (
+                    {filteredAll.map(student => (
                         <StudentRow
                             key={student.id}
                             student={student}
@@ -121,7 +133,7 @@ export function TeamAssignClient({ students, teams }: TeamAssignClientProps) {
                             onAssign={handleAssign}
                         />
                     ))}
-                    {localStudents.length === 0 && (
+                    {filteredAll.length === 0 && (
                         <div className="py-12 text-center">
                             <p className="text-2xl mb-2">🎓</p>
                             <p className="text-sm text-muted-foreground">No students registered yet.</p>
@@ -210,7 +222,7 @@ function StudentRow({ student, teams, pending, onAssign }: {
                             <SelectValue placeholder="Select team…" />
                         )}
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                         <SelectItem value="none">
                             <span className="text-muted-foreground">— No team</span>
                         </SelectItem>
