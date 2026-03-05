@@ -38,9 +38,9 @@ export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLe
         }
     }
 
-    // Auto-refresh every 3 minutes (180000 ms)
+    // Auto-refresh every 1 minute (60000 ms)
     useEffect(() => {
-        const interval = setInterval(fetchLeaderboard, 180000)
+        const interval = setInterval(fetchLeaderboard, 60000)
         return () => clearInterval(interval)
     }, [view])
 
@@ -48,11 +48,6 @@ export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLe
     useEffect(() => {
         fetchLeaderboard()
     }, [view])
-
-    // Sync with server updates (triggered by RealtimeProvider's router.refresh)
-    useEffect(() => {
-        setScores(initialScores)
-    }, [initialScores])
 
     const currentUserScore = scores.find(s => s.user_id === currentUserId)
 

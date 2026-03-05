@@ -4,7 +4,6 @@ import { UserScore } from '@/types'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { getUserLevel } from '@/types'
-import { useAutoAnimate } from '@formkit/auto-animate/react'
 
 const getRankDisplay = (rank: number) => {
     if (rank === 1) return { label: '🥇', style: 'text-amber-400 text-lg' }
@@ -23,7 +22,6 @@ interface LeaderboardProps {
 
 export function Leaderboard({ students, currentUserId, currentUserScore, viewMode = 'individual', limit }: LeaderboardProps) {
     const isTeamView = viewMode === 'team'
-    const [animationParent] = useAutoAnimate()
 
     // In team view, deduplicate by team_id and sort by team_xp
     const uniqueTeams = Array.from(new Map(students.filter(s => s.team_id).map(s => [s.team_id, s])).values())
@@ -61,7 +59,7 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
     return (
         <div className="space-y-4">
             {/* Top List */}
-            <div className="space-y-2" ref={animationParent}>
+            <div className="space-y-2">
                 {displayList.map((student) => {
                     const isMe = isTeamView
                         ? student.team_id === currentUserScore?.team_id
