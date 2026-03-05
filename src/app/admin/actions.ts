@@ -148,6 +148,21 @@ export async function createTeam(name: string, memberIds: string[]) {
     return { success: true, team }
 }
 
+export async function addStudentsToTeam(teamId: string, memberIds: string[]) {
+    if (memberIds.length === 0) return { success: true }
+    const supabase = await createClient()
+    const { error } = await supabase
+        .from('users')
+        .update({ team_id: teamId })
+        .in('id', memberIds)
+    if (error) return { error: error.message }
+
+    revalidatePath('/admin/teams')
+    revalidatePath('/dashboard')
+    revalidatePath('/team')
+    return { success: true }
+}
+
 export async function removeStudentFromTeam(userId: string) {
     const supabase = await createClient()
     const { error } = await supabase

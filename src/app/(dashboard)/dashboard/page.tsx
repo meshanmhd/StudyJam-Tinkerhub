@@ -48,16 +48,6 @@ export default async function DashboardPage() {
         const hasSubmitted = !!submissionMap[t.id]
         if (hasSubmitted) return true
         const deadlinePlusGrace = new Date(new Date(t.deadline).getTime() + ONE_HOUR)
-        return deadlinePlusGrace > now
-    })
-
-    // Past tasks: has deadline AND deadline + 1 hour <= now AND not submitted
-    const pastTasks = tasks.filter(t => {
-        if (!t.deadline) return false
-        const hasSubmitted = !!submissionMap[t.id]
-        if (hasSubmitted) return false
-        const deadlinePlusGrace = new Date(new Date(t.deadline).getTime() + ONE_HOUR)
-        return deadlinePlusGrace <= now
     })
 
     return (
@@ -159,23 +149,6 @@ export default async function DashboardPage() {
                             </div>
                         )}
 
-                        {pastTasks.length > 0 && (
-                            <div className="mt-8">
-                                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                                    Past Tasks ({pastTasks.length})
-                                </h2>
-                                <div className="space-y-3 opacity-60 grayscale-[0.5] pointer-events-none">
-                                    {pastTasks.map(task => (
-                                        <TaskCard
-                                            key={task.id}
-                                            task={task}
-                                            submission={submissionMap[task.id] as TaskSubmission | undefined}
-                                            userId={user.id}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 

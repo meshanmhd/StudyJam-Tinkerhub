@@ -49,14 +49,19 @@ export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLe
         fetchLeaderboard()
     }, [view])
 
+    // Sync with server updates (triggered by RealtimeProvider's router.refresh)
+    useEffect(() => {
+        setScores(initialScores)
+    }, [initialScores])
+
     const currentUserScore = scores.find(s => s.user_id === currentUserId)
 
-    // Sort by selected mode
+    // Sort by selected mode utilizing rounded values
     const sortedScores = [...scores].sort((a, b) => {
         if (view === 'team') {
-            return b.team_xp - a.team_xp
+            return Math.round(b.team_xp) - Math.round(a.team_xp)
         }
-        return b.final_score - a.final_score
+        return Math.round(b.final_score) - Math.round(a.final_score)
     })
 
     return (
@@ -94,6 +99,7 @@ export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLe
                     currentUserId={currentUserId}
                     currentUserScore={currentUserScore}
                     viewMode={view}
+                    limit={5}
                 />
             </div>
         </div>

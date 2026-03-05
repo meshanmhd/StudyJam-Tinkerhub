@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { addXpToUser } from '../actions'
 import { toast } from 'sonner'
 import { timeAgo } from '@/lib/utils'
@@ -31,6 +32,7 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
     const [targetId, setTargetId] = useState('')
     const [xp, setXp] = useState('')
     const [reason, setReason] = useState('')
+    const [searchQuery, setSearchQuery] = useState('')
     const [loading, setLoading] = useState(false)
 
     async function handleSubmit(e: React.FormEvent) {
@@ -43,7 +45,7 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
         if (result.error) toast.error(result.error)
         else {
             toast.success(`XP awarded!`)
-            setXp(''); setReason(''); setTargetId('')
+            setXp(''); setReason(''); setTargetId(''); setSearchQuery('')
             router.refresh()
         }
         setLoading(false)
@@ -51,6 +53,9 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
 
 
     const inputCls = "w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
+
+    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredTeams = teams.filter(t => t.team_name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -92,15 +97,24 @@ export function XpManagerClient({ students, teams, logs }: XpManagerClientProps)
                             <SelectTrigger className="w-full bg-muted/20 border-border/60 ring-1 ring-border/20 focus:border-amber-500/50 focus:ring-amber-500/20 h-10">
                                 <SelectValue placeholder={`Select ${mode}…`} />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent position="popper">
+                                <div className="p-2 sticky top-0 bg-background z-10 border-b border-border/40">
+                                    <Input
+                                        placeholder={`Search ${mode}...`}
+                                        value={searchQuery}
+                                        onChange={e => setSearchQuery(e.target.value)}
+                                        onKeyDown={e => e.stopPropagation()}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
                                 {mode === 'individual'
-                                    ? students.map(s => (
+                                    ? filteredStudents.map(s => (
                                         <SelectItem key={s.id} value={s.id}>
                                             <span className="font-medium">{s.name}</span>
                                             <span className="ml-2 text-muted-foreground text-xs">{s.individual_xp.toLocaleString()} XP</span>
                                         </SelectItem>
                                     ))
-                                    : teams.map(t => (
+                                    : filteredTeams.map(t => (
                                         <SelectItem key={t.id} value={t.id}>
                                             <span className="font-medium">{t.team_name}</span>
                                             <span className="ml-2 text-muted-foreground text-xs">{t.team_xp.toLocaleString()} XP</span>

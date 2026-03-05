@@ -49,6 +49,7 @@ export function BadgeManagerClient({ students, badges: initialBadges, userBadges
 
     const [giveOpen, setGiveOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState('')
+    const [searchQuery, setSearchQuery] = useState('')
     const [selectedBadge, setSelectedBadge] = useState('')
     const [giving, setGiving] = useState(false)
 
@@ -95,6 +96,7 @@ export function BadgeManagerClient({ students, badges: initialBadges, userBadges
             }
             setSelectedStudent('')
             setSelectedBadge('')
+            setSearchQuery('')
             setGiveOpen(false)
             router.refresh()
         }
@@ -117,6 +119,8 @@ export function BadgeManagerClient({ students, badges: initialBadges, userBadges
         student,
         badges: userBadges.filter(ub => ub.user_id === student.id),
     }))
+
+    const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return (
         <div className="space-y-6">
@@ -190,8 +194,17 @@ export function BadgeManagerClient({ students, badges: initialBadges, userBadges
                                 <SelectTrigger className="h-9">
                                     <SelectValue placeholder="Select a student…" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-card border border-border">
-                                    {students.map(s => (
+                                <SelectContent position="popper" className="bg-card border border-border">
+                                    <div className="p-2 sticky top-0 bg-background z-10 border-b border-border/40">
+                                        <Input
+                                            placeholder="Search student..."
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            onKeyDown={e => e.stopPropagation()}
+                                            className="h-8 text-sm"
+                                        />
+                                    </div>
+                                    {filteredStudents.map(s => (
                                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -203,7 +216,7 @@ export function BadgeManagerClient({ students, badges: initialBadges, userBadges
                                 <SelectTrigger className="h-9">
                                     <SelectValue placeholder="Select a badge…" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-card border border-border">
+                                <SelectContent position="popper" className="bg-card border border-border">
                                     {badges.map(b => (
                                         <SelectItem key={b.id} value={b.id}>
                                             {b.icon} {b.name}

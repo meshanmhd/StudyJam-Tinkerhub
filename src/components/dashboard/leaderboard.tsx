@@ -4,43 +4,65 @@ import { UserScore } from '@/types'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { getUserLevel } from '@/types'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 
-const RANK_STYLES = [
-    'text-amber-400',    // 1st
-    'text-slate-300',    // 2nd
-    'text-amber-600',    // 3rd
-]
-
-const RANK_LABELS = ['🥇', '🥈', '🥉', '4', '5']
+const getRankDisplay = (rank: number) => {
+    if (rank === 1) return { label: '🥇', style: 'text-amber-400 text-lg' }
+    if (rank === 2) return { label: '🥈', style: 'text-slate-300 text-lg' }
+    if (rank === 3) return { label: '🥉', style: 'text-amber-600 text-lg' }
+    return { label: `#${rank}`, style: 'text-muted-foreground text-sm' }
+}
 
 interface LeaderboardProps {
     students: UserScore[]
     currentUserId: string
     currentUserScore?: UserScore
     viewMode?: 'individual' | 'team'
+    limit?: number
 }
 
-export function Leaderboard({ students, currentUserId, currentUserScore, viewMode = 'individual' }: LeaderboardProps) {
+export function Leaderboard({ students, currentUserId, currentUserScore, viewMode = 'individual', limit }: LeaderboardProps) {
     const isTeamView = viewMode === 'team'
+    const [animationParent] = useAutoAnimate()
 
     // In team view, deduplicate by team_id and sort by team_xp
     const uniqueTeams = Array.from(new Map(students.filter(s => s.team_id).map(s => [s.team_id, s])).values())
         .sort((a, b) => b.team_xp - a.team_xp)
 
     const listToRender = isTeamView ? uniqueTeams : students
-    const topFive = listToRender.slice(0, 5)
 
-    const currentRank = currentUserScore
-        ? isTeamView
-            ? listToRender.findIndex(s => s.team_id === currentUserScore.team_id) + 1
-            : students.findIndex(s => s.user_id === currentUserId) + 1
-        : null
+    // Create sorted array of unique rounded scores (for dense ranking)
+    const allUniqueScores = Array.from(
+        new Set(
+            listToRender.map(s => Math.round(isTeamView ? s.team_xp : s.final_score))
+        )
+    ).sort((a, b) => b - a)
+
+    const rankedList = listToRender.map((student) => {
+        const score = Math.round(isTeamView ? student.team_xp : student.final_score);
+        const rank = allUniqueScores.indexOf(score) + 1;
+        return { ...student, rank };
+    });
+
+    const displayList = limit ? rankedList.slice(0, limit) : rankedList
+
+    // Find current user's rank
+    let currentRank: number | null = null;
+    let rankObj = null;
+    if (currentUserScore) {
+        if (isTeamView && currentUserScore.team_id) {
+            rankObj = rankedList.find(s => s.team_id === currentUserScore.team_id);
+        } else if (!isTeamView) {
+            rankObj = rankedList.find(s => s.user_id === currentUserId);
+        }
+    }
+    if (rankObj) currentRank = rankObj.rank;
 
     return (
         <div className="space-y-4">
-            {/* Top 5 */}
-            <div className="space-y-2">
-                {topFive.map((student, i) => {
+            {/* Top List */}
+            <div className="space-y-2" ref={animationParent}>
+                {displayList.map((student) => {
                     const isMe = isTeamView
                         ? student.team_id === currentUserScore?.team_id
                         : student.user_id === currentUserId
@@ -50,6 +72,7 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
 
                     // For individual view: level is based on impact score (final_score)
                     const level = !isTeamView ? getUserLevel(student.final_score) : null
+                    const { label, style } = getRankDisplay(student.rank)
 
                     return (
                         <div
@@ -61,8 +84,8 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                                     : 'glass border-border/30 hover:border-border/60'
                             )}
                         >
-                            <span className={cn('text-lg w-6 text-center font-bold shrink-0', i < 3 ? RANK_STYLES[i] : 'text-muted-foreground text-sm')}>
-                                {RANK_LABELS[i]}
+                            <span className={cn('w-6 text-center font-bold shrink-0', style)}>
+                                {label}
                             </span>
                             <Avatar className="w-8 h-8 shrink-0">
                                 <AvatarFallback className={cn('text-xs font-bold', isMe ? 'bg-primary/30 text-primary' : 'bg-muted/60')}>
@@ -80,7 +103,7 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                             <div className="text-right shrink-0">
                                 <p className="text-sm font-bold text-foreground">
                                     {isTeamView
-                                        ? student.team_xp.toLocaleString()
+                                        ? Math.round(student.team_xp).toLocaleString()
                                         : Math.round(student.final_score).toLocaleString()
                                     }
                                 </p>
@@ -93,8 +116,8 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                 })}
             </div>
 
-            {/* User's position if outside top 5 */}
-            {currentRank && currentRank > 5 && currentUserScore && (
+            {/* User's position if outside the limit */}
+            {limit && currentRank && currentRank > limit && currentUserScore && (
                 <div className="border-t border-border/30 pt-3">
                     <p className="text-xs text-muted-foreground mb-2 px-4">Your {isTeamView ? 'Team Position' : 'Position'}</p>
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl border bg-primary/10 border-primary/30">
@@ -113,7 +136,7 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                         </div>
                         <div className="text-right shrink-0">
                             <p className="text-sm font-bold">
-                                {isTeamView ? currentUserScore.team_xp.toLocaleString() : Math.round(currentUserScore.final_score).toLocaleString()}
+                                {isTeamView ? Math.round(currentUserScore.team_xp).toLocaleString() : Math.round(currentUserScore.final_score).toLocaleString()}
                             </p>
                             <p className="text-[10px] text-muted-foreground">{isTeamView ? 'Team XP' : 'Impact'}</p>
                         </div>
