@@ -5,6 +5,8 @@ import { formatDate, timeAgo } from '@/lib/utils'
 import { CheckCircle, XCircle, Clock, Loader2, ClipboardList, BookOpen, Trophy } from 'lucide-react'
 import type { Task, TaskSubmission } from '@/types'
 
+import { TaskCard } from '@/components/dashboard/task-card'
+
 export default async function TasksPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -100,26 +102,12 @@ export default async function TasksPage() {
                 ) : (
                     <div className="space-y-3">
                         {activeTasks.map(task => (
-                            <div key={task.id} className="glass rounded-2xl p-4 border border-border/40 hover:border-primary/30 transition-all">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="font-semibold text-sm">{task.title}</h3>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${task.task_type === 'team' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                                                {task.task_type === 'team' ? 'Team' : 'Individual'}
-                                            </span>
-                                        </div>
-                                        {task.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>}
-                                        {task.deadline && (
-                                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                                <Clock size={10} /> Due: {formatDate(task.deadline)}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <span className="text-sm font-bold text-amber-400 shrink-0">+{task.xp_reward} XP</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground/60 mt-2">Submit via the Dashboard</p>
-                            </div>
+                            <TaskCard
+                                key={task.id}
+                                task={task}
+                                submission={submissionMap[task.id] as TaskSubmission | undefined}
+                                userId={user.id}
+                            />
                         ))}
                     </div>
                 )}

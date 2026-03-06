@@ -372,7 +372,7 @@ export function WordleGame({
             </p>
 
             {/* Game Grid */}
-            <div className="grid gap-1.5 mb-6" style={{ gridTemplateRows: `repeat(${MAX_GUESSES}, 1fr)` }}>
+            <div className="grid gap-1.5 mb-6 pointer-events-none" style={{ gridTemplateRows: `repeat(${MAX_GUESSES}, 1fr)` }}>
                 {displayBoard.map((row, rowIdx) => (
                     <div
                         key={rowIdx}
@@ -396,15 +396,23 @@ export function WordleGame({
             {/* On-Screen Keyboard */}
             <div className="flex flex-col gap-2 w-full max-w-[500px] px-2 touch-manipulation">
                 {KEYBOARD_ROWS.map((row, rIdx) => (
-                    <div key={rIdx} className="flex justify-center gap-1.5">
+                    <div key={rIdx} className="flex justify-center gap-1.5 sm:gap-2">
                         {row.map((key) => {
-                            const state = keyStates[key.toLowerCase()] || keyStates[key.toUpperCase()]
+                            const upperKey = key.toUpperCase()
+                            const lowerKey = key.toLowerCase()
+                            const state = keyStates[lowerKey] || keyStates[upperKey]
                             let bgClass = 'bg-muted text-foreground'
                             if (state === 'correct') bgClass = 'bg-[#6aaa64] text-white'
                             else if (state === 'present') bgClass = 'bg-[#c9b458] text-white'
                             else if (state === 'absent') bgClass = 'bg-[#3a3a3c] text-white'
 
                             const isSpecial = key === 'Enter' || key === '⌫'
+
+                            // Check for repeating letters that are discovered
+                            let repeatCount = 0
+                            if (!isSpecial && (state === 'correct' || state === 'present')) {
+                                repeatCount = targetWord.split('').filter(l => l.toUpperCase() === upperKey).length
+                            }
 
                             return (
                                 <button
@@ -414,13 +422,18 @@ export function WordleGame({
                                         e.stopPropagation()
                                         handleKey(key)
                                     }}
-                                    className={`
-                                        h-12 sm:h-14 rounded font-bold transition-colors active:scale-95 flex items-center justify-center
-                                        ${isSpecial ? 'px-3 sm:px-4 text-[11px] sm:text-xs' : 'flex-1 max-w-[40px] sm:max-w-[45px] text-sm sm:text-base'}
+                                    className={`relative
+                                        h-14 sm:h-16 rounded font-bold transition-colors active:scale-95 flex items-center justify-center
+                                        ${isSpecial ? 'px-3 sm:px-4 text-xs sm:text-sm' : 'flex-1 max-w-[44px] sm:max-w-[50px] text-base sm:text-lg'}
                                         ${bgClass}
                                     `}
                                 >
                                     {key}
+                                    {repeatCount > 1 && (
+                                        <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold shadow border border-background">
+                                            {repeatCount}
+                                        </span>
+                                    )}
                                 </button>
                             )
                         })}

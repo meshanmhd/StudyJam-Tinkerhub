@@ -45,7 +45,69 @@ export async function createTask(formData: FormData) {
     return { success: true, task: data }
 }
 
-export async function reviewSubmission(submissionId: string, action: 'approved' | 'rejected', xpGiven: number, taskId: string, userId: string) {
+export async function updateTask(taskId: string, formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data, error } = await supabase.from('tasks').update({
+        title: formData.get('title') as string,
+        description: formData.get('description') as string || null,
+        xp_reward: parseInt(formData.get('xp_reward') as string),
+        task_type: (formData.get('task_type') as string) || 'individual',
+        deadline: formData.get('deadline') as string || null,
+    }).eq('id', taskId).select().single()
+
+    if (error) return { error: error.message }
+    revalidatePath('/admin/tasks')
+    revalidatePath(`/admin/tasks/${taskId}`)
+    revalidatePath('/dashboard')
+    revalidatePath('/tasks')
+    return { success: true, task: data }
+}
+
+export async function endTask(taskId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase.from('tasks').update({
+        deadline: new Date().toISOString()
+    }).eq('id', taskId)
+
+    if (error) return { error: error.message }
+    revalidatePath('/admin/tasks')
+    revalidatePath(`/admin/tasks/${taskId}`)
+    revalidatePath('/dashboard')
+    revalidatePath('/tasks')
+    return { success: true }
+}
+
+export async function deleteTask(taskId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+
+    if (error) return { error: error.message }
+
+    // We navigate to /admin/tasks from client, but we will revalidate here.
+    revalidatePath('/admin/tasks')
+    revalidatePath('/dashboard')
+    revalidatePath('/tasks')
+    return { success: true }
+}
+
+
+export async function reviewSubmission(
+    submissionId: string,
+    action: 'approved' | 'rejected',
+    xpGiven: number,
+    taskId: string,
+    userId: string,
+    adminComment?: string
+) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
@@ -54,6 +116,7 @@ export async function reviewSubmission(submissionId: string, action: 'approved' 
         status: action,
         approved_by: user.id,
         approved_at: new Date().toISOString(),
+        admin_comment: adminComment || null
     }
     if (action === 'approved') updates.xp_given = xpGiven
 
@@ -85,30 +148,7 @@ export async function reviewSubmission(submissionId: string, action: 'approved' 
     return { success: true }
 }
 
-// ─── Weekly ───────────────────────────────────────────────────────────────────
 
-export async function setWeeklyTitle(teamId: string, title: string) {
-    const supabase = await createClient()
-    const { error } = await supabase.from('teams').update({ weekly_title: title }).eq('id', teamId)
-    if (error) return { error: error.message }
-    revalidatePath('/admin/weekly')
-    revalidatePath('/team')
-    revalidatePath('/achievements')
-    return { success: true }
-}
-
-export async function setStudentWeeklyHighlight(userId: string, highlight: string | null) {
-    const supabase = await createClient()
-    const { error } = await supabase
-        .from('users')
-        .update({ weekly_highlight: highlight })
-        .eq('id', userId)
-    if (error) return { error: error.message }
-    revalidatePath('/admin/weekly')
-    revalidatePath('/achievements')
-    revalidatePath('/dashboard')
-    return { success: true }
-}
 
 // ─── Teams ────────────────────────────────────────────────────────────────────
 

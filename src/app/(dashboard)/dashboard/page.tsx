@@ -138,7 +138,7 @@ export default async function DashboardPage() {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {activeTasks.map(task => (
+                                {activeTasks.slice(0, 4).map(task => (
                                     <TaskCard
                                         key={task.id}
                                         task={task}
@@ -146,9 +146,15 @@ export default async function DashboardPage() {
                                         userId={user.id}
                                     />
                                 ))}
+                                {activeTasks.length > 4 && (
+                                    <div className="pt-2">
+                                        <a href="/tasks" className="text-xs text-primary hover:underline font-medium flex items-center justify-center gap-1 bg-primary/5 hover:bg-primary/10 py-2.5 rounded-xl transition-colors w-full border border-primary/10">
+                                            View {activeTasks.length - 4} More Tasks →
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         )}
-
                     </div>
                 </div>
 
