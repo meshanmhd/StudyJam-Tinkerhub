@@ -1,0 +1,2 @@
+﻿.next/types/validator.ts(105,39): error TS2307: Cannot find module '../../src/app/admin/analytics/page.js' or its corresponding type declarations.
+.next/types/validator.ts(195,39): error TS2307: Cannot find module '../../src/app/admin/weekly/page.js' or its corresponding type declarations.

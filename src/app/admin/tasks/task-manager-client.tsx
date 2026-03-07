@@ -11,10 +11,10 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog'
-import { createTask, reviewSubmission } from '../actions'
+import { createTask } from '../actions'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
-import { CheckCircle, XCircle, Plus, Loader2, ClipboardList, Clock, Hash, Users, User } from 'lucide-react'
+import { Plus, Loader2, Clock, Hash, Users, User, Search, Filter } from 'lucide-react'
 
 interface Task {
     id: string
@@ -24,57 +24,25 @@ interface Task {
     task_type: 'individual' | 'team'
     deadline?: string
     created_at: string
-}
-
-interface Submission {
-    id: string; task_id: string; user_id: string; status: string; submitted_at: string; xp_given?: number
-    task?: { title?: string; xp_reward?: number; task_type?: string; deadline?: string } | null
-    user?: { name?: string; team?: { team_name?: string } | null } | null
+    level?: string
+    submissions?: { status: string }[]
 }
 
 interface TaskManagerClientProps {
     tasks: Task[]
-    submissions: Submission[]
 }
 
-type SortKey = 'deadline' | 'submitted_at' | 'student' | 'task'
-
-const MAX_DESC = 300
-
-export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps) {
+export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
     const router = useRouter()
     const [showForm, setShowForm] = useState(false)
     const [creating, setCreating] = useState(false)
-    const [reviewing, setReviewing] = useState<string | null>(null)
-    const [localSubmissions, setLocalSubmissions] = useState(submissions)
     const [localTasks, setLocalTasks] = useState(tasks)
     const [desc, setDesc] = useState('')
     const [taskType, setTaskType] = useState<'individual' | 'team'>('individual')
-    const [sortKey, setSortKey] = useState<SortKey>('deadline')
-
-    // XP prompt dialog
-    const [approveDialogSub, setApproveDialogSub] = useState<Submission | null>(null)
-    const [xpInput, setXpInput] = useState('')
-
-    const pending = localSubmissions.filter(s => s.status === 'pending')
-    const reviewed = localSubmissions.filter(s => s.status !== 'pending')
-
-    // Sort pending submissions
-    const sortedPending = [...pending].sort((a, b) => {
-        if (sortKey === 'deadline') {
-            const da = a.task?.deadline ? new Date(a.task.deadline).getTime() : 0
-            const db = b.task?.deadline ? new Date(b.task.deadline).getTime() : 0
-            return da - db
-        }
-        if (sortKey === 'submitted_at') return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
-        if (sortKey === 'student') return ((a.user as { name?: string } | null)?.name || '').localeCompare((b.user as { name?: string } | null)?.name || '')
-        if (sortKey === 'task') return ((a.task as { title?: string } | null)?.title || '').localeCompare((b.task as { title?: string } | null)?.title || '')
-        return 0
-    })
+    const [searchQuery, setSearchQuery] = useState('')
+    const [filterBy, setFilterBy] = useState('All')
 
     const now = new Date()
-    const activeTasks = localTasks.filter(t => !t.deadline || new Date(t.deadline) > now)
-    const pastTasks = localTasks.filter(t => t.deadline && new Date(t.deadline) <= now)
 
     async function handleCreateTask(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -95,333 +63,215 @@ export function TaskManagerClient({ tasks, submissions }: TaskManagerClientProps
         setCreating(false)
     }
 
-    function openApproveDialog(sub: Submission) {
-        setApproveDialogSub(sub)
-        setXpInput(String((sub.task as { xp_reward?: number } | null)?.xp_reward || 0))
-    }
+    const filteredTasks = localTasks
+        .filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .filter(t => {
+            if (filterBy === 'All') return true
+            const isPast = t.deadline && new Date(t.deadline) <= now
+            if (filterBy === 'Active') return !isPast
+            if (filterBy === 'Ended') return isPast
+            if (filterBy === 'Pending Review') {
+                return (t.submissions?.filter(s => s.status === 'pending').length || 0) > 0
+            }
+            return true
+        })
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    async function handleConfirmApprove() {
-        if (!approveDialogSub) return
-        const xp = parseInt(xpInput) || 0
-        setReviewing(approveDialogSub.id)
-        setApproveDialogSub(null)
-        const result = await reviewSubmission(approveDialogSub.id, 'approved', xp, approveDialogSub.task_id, approveDialogSub.user_id)
-        if (result.error) toast.error(result.error)
-        else {
-            toast.success(`Approved! +${xp} XP awarded`)
-            setLocalSubmissions(prev => prev.map(s => s.id === approveDialogSub!.id ? { ...s, status: 'approved', xp_given: xp } : s))
-            router.refresh()
-        }
-        setReviewing(null)
-    }
-
-    async function handleReject(sub: Submission) {
-        setReviewing(sub.id)
-        const result = await reviewSubmission(sub.id, 'rejected', 0, sub.task_id, sub.user_id)
-        if (result.error) toast.error(result.error)
-        else {
-            toast.success('Submission rejected.')
-            setLocalSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: 'rejected' } : s))
-            router.refresh()
-        }
-        setReviewing(null)
-    }
-
-    const inputCls = "w-full px-3 py-2.5 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+    const inputCls = "w-full px-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
 
     return (
-        <div className="space-y-6">
-            {/* Task List + Create Form */}
-            <div className="glass rounded-2xl border border-border/40 overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-border/30">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-                            <ClipboardList size={15} className="text-primary" />
+        <div className="space-y-10">
+            {/* Header */}
+            <header>
+                <h1 className="text-xl font-bold tracking-tight mb-1">Task Manager</h1>
+                <p className="text-zinc-500 text-sm">Create tasks and review student submissions</p>
+            </header>
+
+
+
+            {/* Create task dialog */}
+            <Dialog open={showForm} onOpenChange={setShowForm}>
+                <DialogContent className="sm:max-w-[450px] max-h-[85vh] overflow-y-auto custom-scrollbar">
+                    <DialogHeader>
+                        <DialogTitle>Create New Task</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateTask} className="space-y-4 pt-4">
+                        {/* Title */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Title</Label>
+                            <input id="title" name="title" required placeholder="Build a REST API…" className={inputCls} />
                         </div>
-                        <div>
-                            <h2 className="text-sm font-semibold">Tasks</h2>
-                            <p className="text-xs text-muted-foreground">{localTasks.length} tasks total</p>
+
+                        {/* Description */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</Label>
+                            </div>
+                            <textarea
+                                id="description" name="description" rows={3}
+                                value={desc} onChange={e => setDesc(e.target.value)}
+                                placeholder="Describe what students need to do…"
+                                className="w-full px-4 py-3 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                            />
                         </div>
-                    </div>
-                    <Button
-                        size="sm"
-                        onClick={() => setShowForm(!showForm)}
-                        className="gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs h-8"
-                    >
-                        <Plus size={13} /> New Task
-                    </Button>
-                </div>
 
-                {/* Create task form */}
-                {showForm && (
-                    <div className="px-5 pb-6 border-b border-border/30 bg-muted/10">
-                        <form onSubmit={handleCreateTask} className="space-y-4 pt-5">
-                            {/* Title */}
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Title</Label>
-                                <input id="title" name="title" required placeholder="Build a REST API…" className={inputCls} />
-                            </div>
-
-                            {/* Description */}
-                            <div className="space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</Label>
-                                    <span className={`text-[10px] font-mono ${desc.length > MAX_DESC * 0.9 ? 'text-amber-400' : 'text-muted-foreground/50'}`}>{desc.length}/{MAX_DESC}</span>
-                                </div>
-                                <textarea
-                                    id="description" name="description" rows={3} maxLength={MAX_DESC}
-                                    value={desc} onChange={e => setDesc(e.target.value)}
-                                    placeholder="Describe what students need to do…"
-                                    className="w-full px-3 py-2.5 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
-                                />
-                            </div>
-
-                            {/* Task Type */}
+                        {/* Task Type & Level */}
+                        <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Type</Label>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 h-11">
                                     <button
                                         type="button"
                                         onClick={() => setTaskType('individual')}
-                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${taskType === 'individual' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-xs transition-all ${taskType === 'individual' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
                                     >
                                         <User size={14} /> Individual
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setTaskType('team')}
-                                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${taskType === 'team' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-xs transition-all ${taskType === 'team' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
                                     >
                                         <Users size={14} /> Team
                                     </button>
                                 </div>
-                                {taskType === 'team' && (
-                                    <p className="text-[11px] text-muted-foreground">XP will be awarded to the student&apos;s team, not individually.</p>
-                                )}
                             </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Difficulty Level</Label>
+                                <select name="level" className={`${inputCls} bg-black text-white border-gray-700 rounded-md appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2371717a%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-no-repeat bg-[position:right_12px_center] pr-10`} defaultValue="">
+                                    <option value="" disabled>Select level...</option>
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                    <option value="Expert">Expert</option>
+                                </select>
+                            </div>
+                        </div>
 
-                            {/* XP + Deadline row */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Reward</Label>
-                                    <div className="relative">
-                                        <Hash size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
-                                        <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="25"
-                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all" />
-                                    </div>
+
+                        {/* XP + Deadline row */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Reward</Label>
+                                <div className="relative">
+                                    <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400" />
+                                    <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="eg:25"
+                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-2 ring-border/20 rounded-xl text-sm focus:outline-none" />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Deadline</Label>
-                                    <div className="relative">
-                                        <Clock size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
-                                        <input id="deadline" name="deadline" type="datetime-local"
-                                            className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all" />
-                                    </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Deadline</Label>
+                                <div className="relative">
+                                    <Clock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+                                    <input id="deadline" name="deadline" type="datetime-local"
+                                        onClick={(e) => 'showPicker' in HTMLInputElement.prototype && e.currentTarget.showPicker()}
+                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all cursor-pointer" />
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="flex gap-2 pt-1">
-                                <Button type="submit" disabled={creating} size="sm" className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 text-xs h-8">
-                                    {creating ? <><Loader2 size={13} className="animate-spin mr-1.5" />Creating…</> : <>Create Task</>}
-                                </Button>
-                                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(false); setDesc(''); setTaskType('individual') }} className="text-xs h-8">Cancel</Button>
-                            </div>
-                        </form>
-                    </div>
-                )}
-
-                {/* Task rows */}
-                <div className="divide-y divide-border/20">
-                    <div className="px-5 py-2 bg-muted/5 border-b border-border/20">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Tasks ({activeTasks.length})</p>
-                    </div>
-                    {activeTasks.map(task => (
-                        <div key={task.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-muted/10 transition-colors">
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-sm font-medium">{task.title}</p>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${task.task_type === 'team' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                                        {task.task_type === 'team' ? 'Team' : 'Individual'}
-                                    </span>
-                                </div>
-                                {task.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>}
-                                {task.deadline && (
-                                    <p className="text-xs text-muted-foreground/70 mt-0.5 flex items-center gap-1">
-                                        <Clock size={10} /> Due: {formatDate(task.deadline)}
-                                    </p>
-                                )}
-                            </div>
-                            <span className="text-sm font-bold text-amber-400 shrink-0 mt-0.5">+{task.xp_reward} XP</span>
-                        </div>
-                    ))}
-                    {activeTasks.length === 0 && (
-                        <div className="py-8 text-center"><p className="text-sm text-muted-foreground">No active tasks right now.</p></div>
-                    )}
-
-                    {pastTasks.length > 0 && (
-                        <>
-                            <div className="px-5 py-2 bg-muted/5 border-y border-border/20 mt-4">
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Past Tasks ({pastTasks.length})</p>
-                            </div>
-                            {pastTasks.map(task => (
-                                <div key={task.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-muted/10 transition-colors opacity-70 grayscale-[0.5]">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-medium">{task.title}</p>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${task.task_type === 'team' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                                                {task.task_type === 'team' ? 'Team' : 'Individual'}
-                                            </span>
-                                        </div>
-                                        {task.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{task.description}</p>}
-                                        {task.deadline && (
-                                            <p className="text-xs text-rose-400/70 mt-0.5 flex items-center gap-1">
-                                                <Clock size={10} /> Ended: {formatDate(task.deadline)}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <span className="text-sm font-bold text-amber-400/70 shrink-0 mt-0.5">+{task.xp_reward} XP</span>
-                                </div>
-                            ))}
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Pending Submissions */}
-            <div>
-                <div className="flex items-center gap-3 mb-4 flex-wrap">
-                    <h2 className="text-sm font-semibold">Pending Submissions</h2>
-                    {pending.length > 0 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25 live-badge">
-                            {pending.length} waiting
-                        </span>
-                    )}
-                    {/* Sort controls */}
-                    <div className="ml-auto flex items-center gap-1.5">
-                        <span className="text-xs text-muted-foreground">Sort:</span>
-                        {(['deadline', 'submitted_at', 'student', 'task'] as SortKey[]).map(key => (
-                            <button
-                                key={key}
-                                onClick={() => setSortKey(key)}
-                                className={`text-xs px-2 py-0.5 rounded-md border transition-all ${sortKey === key ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/30 text-muted-foreground hover:border-border/60'}`}
-                            >
-                                {key === 'deadline' ? 'By Deadline' : key === 'submitted_at' ? 'By Submitted' : key === 'student' ? 'By Student' : 'By Task'}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    {sortedPending.map(sub => (
-                        <div key={sub.id} className="glass rounded-xl px-4 py-3.5 border border-amber-500/20 flex items-center gap-4 hover:border-amber-500/30 transition-colors">
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-sm font-medium">{(sub.task as { title?: string } | null)?.title}</p>
-                                    {(sub.task as { task_type?: string } | null)?.task_type === 'team' ? (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-purple-500/10 text-purple-400 border-purple-500/20">Team</span>
-                                    ) : (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/20">Individual</span>
-                                    )}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    {(sub.user as { name?: string } | null)?.name}
-                                    {(sub.user as { team?: { team_name?: string } | null } | null)?.team?.team_name && (
-                                        <> · {(sub.user as { team?: { team_name?: string } | null } | null)?.team?.team_name}</>
-                                    )}
-                                </p>
-                                {(sub.task as { deadline?: string } | null)?.deadline && (
-                                    <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1 mt-0.5">
-                                        <Clock size={9} /> Due: {formatDate((sub.task as { deadline?: string })!.deadline!)}
-                                    </p>
-                                )}
-                            </div>
-                            <span className="text-sm font-bold text-amber-400 shrink-0">+{(sub.task as { xp_reward?: number } | null)?.xp_reward} XP</span>
-                            <div className="flex gap-1.5 shrink-0">
-                                <Button
-                                    size="sm" variant="ghost"
-                                    disabled={reviewing === sub.id}
-                                    onClick={() => openApproveDialog(sub)}
-                                    className="h-8 px-3 gap-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 text-xs"
-                                >
-                                    {reviewing === sub.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                                    Approve
-                                </Button>
-                                <Button
-                                    size="sm" variant="ghost"
-                                    disabled={reviewing === sub.id}
-                                    onClick={() => handleReject(sub)}
-                                    className="h-8 px-3 gap-1 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs"
-                                >
-                                    <XCircle size={12} /> Reject
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                    {pending.length === 0 && (
-                        <div className="glass rounded-2xl p-8 text-center border border-border/30">
-                            <p className="text-sm text-muted-foreground">All caught up! No pending submissions.</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Reviewed section */}
-                {reviewed.length > 0 && (
-                    <div className="mt-6">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Recently Reviewed</p>
-                        <div className="space-y-1.5">
-                            {reviewed.slice(0, 8).map(sub => (
-                                <div key={sub.id} className="flex items-center gap-4 px-4 py-2.5 glass rounded-lg border border-border/20 opacity-70">
-                                    <span className={`text-xs font-bold ${sub.status === 'approved' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {sub.status === 'approved' ? '✓' : '✗'}
-                                    </span>
-                                    <p className="text-xs flex-1 truncate">{(sub.task as { title?: string } | null)?.title}</p>
-                                    <p className="text-xs text-muted-foreground">{(sub.user as { name?: string } | null)?.name}</p>
-                                    {sub.status === 'approved' && (
-                                        <span className="text-xs font-semibold text-amber-400">+{sub.xp_given} XP</span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* XP Prompt Dialog */}
-            <Dialog open={!!approveDialogSub} onOpenChange={(open) => { if (!open) setApproveDialogSub(null) }}>
-                <DialogContent className="max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Award XP</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Approving submission for:</p>
-                            <p className="text-sm font-semibold mt-1">{(approveDialogSub?.task as { title?: string } | null)?.title}</p>
-                            <p className="text-xs text-muted-foreground">{(approveDialogSub?.user as { name?: string } | null)?.name}</p>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP to Award</Label>
-                            <div className="relative">
-                                <Hash size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={xpInput}
-                                    onChange={e => setXpInput(e.target.value)}
-                                    className="w-full pl-8 pr-3 py-2 h-10 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
-                                />
-                            </div>
-                        </div>
-                        <div className="bg-muted/20 rounded-lg px-3 py-2 text-xs text-muted-foreground">
-                            <span className="font-medium">Auto Reason:</span> {(approveDialogSub?.task as { title?: string } | null)?.title} — done
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" size="sm" onClick={() => setApproveDialogSub(null)}>Cancel</Button>
-                        <Button size="sm" onClick={handleConfirmApprove} className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/20">
-                            Confirm & Award XP
-                        </Button>
-                    </DialogFooter>
+                        <DialogFooter className="pt-4 mt-2">
+                            <Button variant="ghost" type="button" onClick={() => setShowForm(false)} className="rounded-xl px-5">Cancel</Button>
+                            <Button type="submit" disabled={creating} className="bg-white text-black hover:bg-gray-200 rounded-xl px-5 transition-colors">
+                                {creating ? <><Loader2 size={14} className="animate-spin mr-1.5" />Creating…</> : <>Create Task</>}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Task List Main Area */}
+            <main className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl overflow-hidden">
+                <div className="p-6 border-b border-[#1F1F1F] flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+                        <div className="relative w-full sm:w-64 lg:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
+                            <input
+                                className="w-full pl-10 pr-4 py-2.5 text-sm bg-black border border-[#1F1F1F] rounded-lg focus:outline-none focus:ring-1 focus:ring-white focus:border-white/1 placeholder:text-zinc-500 text-white"
+                                placeholder="Search tasks..."
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex gap-3 w-full sm:w-auto relative">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4 z-10 pointer-events-none" />
+                            <select
+                                className="w-full sm:w-auto text-sm bg-black border border-[#1F1F1F] rounded-lg py-2.5 pl-9 pr-10 focus:outline-none focus:ring-1 focus:ring-white text-white appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20stroke%3D%22%2371717a%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-no-repeat bg-[position:right_10px_center]"
+                                value={filterBy}
+                                onChange={(e) => setFilterBy(e.target.value)}
+                            >
+                                <option value="All">All Tasks</option>
+                                <option value="Active">Active</option>
+                                <option value="Pending Review">Pending Review</option>
+                                <option value="Ended">Ended</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="bg-white text-black px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center space-x-2 hover:bg-gray-200 transition-colors whitespace-nowrap w-full md:w-auto"
+                    >
+                        <Plus size={16} className="font-semibold" />
+                        <span>NEW TASK</span>
+                    </button>
+                </div>
+
+                <div className="divide-y divide-[#1F1F1F]">
+                    <div className="px-6 py-4 bg-white/[0.02] text-[11px] font-bold tracking-[0.1em] text-zinc-500 uppercase border-b border-[#1F1F1F]">
+                        All Tasks ({localTasks.length})
+                    </div>
+
+                    {filteredTasks.map(task => {
+                        const isPast = task.deadline && new Date(task.deadline) <= now
+                        const pendingCount = task.submissions?.filter(s => s.status === 'pending').length || 0
+
+                        return (
+                            <div
+                                key={task.id}
+                                onClick={() => router.push(`/admin/tasks/${task.id}`)}
+                                className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer group flex items-center justify-between gap-4"
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className={`text-sm font-semibold transition-colors truncate ${isPast ? 'text-white/50' : 'text-white group-hover:text-primary'}`}>
+                                            {task.title}
+                                        </h3>
+                                        {task.task_type === 'individual' ? (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border text-blue-400 border-blue-400/30 shrink-0">Indiv</span>
+                                        ) : (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border text-purple-400 border-purple-400/30 shrink-0">Team</span>
+                                        )}
+                                        {pendingCount > 0 && (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold border text-amber-400 border-amber-400/30 flex items-center gap-1 shrink-0">
+                                                <span className="w-1 h-1 rounded-full bg-amber-400"></span>
+                                                {pendingCount} pending
+                                            </span>
+                                        )}
+                                    </div>
+                                    {task.description && (
+                                        <p className={`text-xs line-clamp-1 mt-0.5 ${isPast ? 'text-zinc-600' : 'text-zinc-500'}`}>{task.description}</p>
+                                    )}
+                                </div>
+                                <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
+                                    <span className={`text-xs font-bold ${isPast ? 'text-white/40' : 'text-amber-400'}`}>+{task.xp_reward} XP</span>
+                                    {task.deadline && (
+                                        <span className="text-[10px] text-zinc-600 flex items-center gap-1">
+                                            <Clock size={9} />{isPast ? 'Ended' : 'Due'}: {formatDate(task.deadline)}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+
+                    {filteredTasks.length === 0 && (
+                        <div className="p-8 text-center text-zinc-500">
+                            No tasks found matching your criteria.
+                        </div>
+                    )}
+                </div>
+            </main>
         </div>
     )
 }

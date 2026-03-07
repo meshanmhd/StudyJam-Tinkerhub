@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { GameAnalyticsClient } from './game-analytics-client'
 
 export default async function AdminGameAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,7 +25,7 @@ export default async function AdminGameAnalyticsPage({ params }: { params: Promi
         <div className="space-y-6">
             <div>
                 <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    <a href="/admin/games" className="hover:text-foreground transition-colors">Games</a>
+                    <Link href="/admin/games" className="hover:text-foreground transition-colors">Games</Link>
                     <span>/</span>
                     <span>Analytics</span>
                 </div>

@@ -70,6 +70,7 @@ export interface Task {
     id: string
     title: string
     description?: string
+    level?: string
     xp_reward: number
     task_type: 'individual' | 'team'
     deadline?: string
@@ -81,11 +82,14 @@ export interface TaskSubmission {
     id: string
     task_id: string
     user_id: string
+    content?: string
+    admin_comment?: string
     submitted_at: string
     status: SubmissionStatus
     approved_by?: string
     approved_at?: string
     xp_given?: number
+    allow_resubmission?: boolean
     task?: Task
     user?: { name: string; team?: { team_name: string } }
 }

@@ -1,0 +1,49 @@
+﻿
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\dashboard\page.tsx
+  42:11  warning  'now' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  50:15  warning  'deadlinePlusGrace' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\[id]\wordle-game.tsx
+    8:26  warning  'Keyboard' is defined but never used    @typescript-eslint/no-unused-vars
+  121:10  warning  'formatTime' is defined but never used  @typescript-eslint/no-unused-vars
+  290:46  warning  'i' is defined but never used           @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\games-page-client.tsx
+  5:60  warning  'Award' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\leaderboard\page.tsx
+  20:11  warning  'teams' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  21:11  warning  'currentUserTeamId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\games\games-client.tsx
+  10:26  warning  'Trophy' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\leaderboard\page.tsx
+  15:23  warning  'teamsRes' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\session\session-mode-client.tsx
+  34:18  warning  'setLogs' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\students\page.tsx
+  57:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\tasks\[id]\task-detail-client.tsx
+   18:25  warning  'FileText' is defined but never used           @typescript-eslint/no-unused-vars
+   31:7   warning  'inputCls' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  246:47  warning  'initials' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\components\dashboard\realtime-leaderboard.tsx
+  45:8  warning  React Hook useEffect has a missing dependency: 'fetchLeaderboard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  50:8  warning  React Hook useEffect has a missing dependency: 'fetchLeaderboard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\components\dashboard\task-card.tsx
+   5:10  warning  'Badge' is defined but never used                  @typescript-eslint/no-unused-vars
+  19:10  warning  'Label' is defined but never used                  @typescript-eslint/no-unused-vars
+  40:7   warning  'STATUS_ICONS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  50:21  warning  'setContent' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\utils\supabase\middleware.ts
+  18:58  warning  'options' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 22 problems (1 error, 21 warnings)
+

@@ -23,6 +23,8 @@ export async function addXpToUser(userId: string, teamId: string | null, xpValue
     return { success: true }
 }
 
+// Note: Delete XP Log is handled in @/app/admin/students/actions.ts to ensure sync with totals.
+
 // ─── Tasks ────────────────────────────────────────────────────────────────────
 
 export async function createTask(formData: FormData) {
@@ -32,10 +34,11 @@ export async function createTask(formData: FormData) {
 
     const { data, error } = await supabase.from('tasks').insert({
         title: formData.get('title') as string,
-        description: formData.get('description') as string || null,
+        description: (formData.get('description') as string) || null,
         xp_reward: parseInt(formData.get('xp_reward') as string),
         task_type: (formData.get('task_type') as string) || 'individual',
-        deadline: formData.get('deadline') as string || null,
+        level: (formData.get('level') as string) || null,
+        deadline: (formData.get('deadline') as string) || null,
         created_by: user.id,
     }).select().single()
 
@@ -45,7 +48,70 @@ export async function createTask(formData: FormData) {
     return { success: true, task: data }
 }
 
-export async function reviewSubmission(submissionId: string, action: 'approved' | 'rejected', xpGiven: number, taskId: string, userId: string) {
+export async function updateTask(taskId: string, formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data, error } = await supabase.from('tasks').update({
+        title: formData.get('title') as string,
+        description: formData.get('description') as string || null,
+        xp_reward: parseInt(formData.get('xp_reward') as string),
+        task_type: (formData.get('task_type') as string) || 'individual',
+        deadline: formData.get('deadline') as string || null,
+    }).eq('id', taskId).select().single()
+
+    if (error) return { error: error.message }
+    revalidatePath('/admin/tasks')
+    revalidatePath(`/admin/tasks/${taskId}`)
+    revalidatePath('/dashboard')
+    revalidatePath('/tasks')
+    return { success: true, task: data }
+}
+
+export async function endTask(taskId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase.from('tasks').update({
+        deadline: new Date().toISOString()
+    }).eq('id', taskId)
+
+    if (error) return { error: error.message }
+    revalidatePath('/admin/tasks')
+    revalidatePath(`/admin/tasks/${taskId}`)
+    revalidatePath('/dashboard')
+    revalidatePath('/tasks')
+    return { success: true }
+}
+
+export async function deleteTask(taskId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+
+    if (error) return { error: error.message }
+
+    // We navigate to /admin/tasks from client, but we will revalidate here.
+    revalidatePath('/admin/tasks')
+    revalidatePath('/dashboard')
+    revalidatePath('/tasks')
+    return { success: true }
+}
+
+
+export async function reviewSubmission(
+    submissionId: string,
+    action: 'approved' | 'rejected',
+    xpGiven: number,
+    taskId: string,
+    userId: string,
+    adminComment?: string,
+    allowResubmission: boolean = true
+) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
@@ -54,6 +120,8 @@ export async function reviewSubmission(submissionId: string, action: 'approved' 
         status: action,
         approved_by: user.id,
         approved_at: new Date().toISOString(),
+        admin_comment: adminComment || null,
+        allow_resubmission: action === 'rejected' ? allowResubmission : true
     }
     if (action === 'approved') updates.xp_given = xpGiven
 
@@ -78,37 +146,16 @@ export async function reviewSubmission(submissionId: string, action: 'approved' 
         })
     }
 
+    revalidatePath('/admin')
     revalidatePath('/admin/tasks')
+    revalidatePath(`/admin/tasks/${taskId}`)
     revalidatePath('/dashboard')
     revalidatePath('/leaderboard')
     revalidatePath('/team')
     return { success: true }
 }
 
-// ─── Weekly ───────────────────────────────────────────────────────────────────
 
-export async function setWeeklyTitle(teamId: string, title: string) {
-    const supabase = await createClient()
-    const { error } = await supabase.from('teams').update({ weekly_title: title }).eq('id', teamId)
-    if (error) return { error: error.message }
-    revalidatePath('/admin/weekly')
-    revalidatePath('/team')
-    revalidatePath('/achievements')
-    return { success: true }
-}
-
-export async function setStudentWeeklyHighlight(userId: string, highlight: string | null) {
-    const supabase = await createClient()
-    const { error } = await supabase
-        .from('users')
-        .update({ weekly_highlight: highlight })
-        .eq('id', userId)
-    if (error) return { error: error.message }
-    revalidatePath('/admin/weekly')
-    revalidatePath('/achievements')
-    revalidatePath('/dashboard')
-    return { success: true }
-}
 
 // ─── Teams ────────────────────────────────────────────────────────────────────
 
@@ -242,15 +289,11 @@ export async function removeBadge(userBadgeId: string) {
  *   - No history / after reset  → streak = 1, state = active
  *   - Same day (idempotent)     → no change
  *   - gap = 1 AND state=active  → streak++, state = active  (normal)
- *   - state = frozen, gap ≤ 2   → UNFREEZE, no increment (penalty day)
- *                                  next consecutive day WILL get +1
- *   - state = frozen, gap ≥ 3   → too long, reset → streak = 1, state = active
- *   - state = active, gap ≥ 2   → edge case, reset → streak = 1
+ *   - state = active, gap >= 2  → reset → streak = 1
  *
  * ABSENT rules:
- *   - state = active, gap from lastActivity = 1 → freeze (missed the very next day)
- *   - state = frozen → reset (two consecutive misses)
- *   - anything else → no change
+ *   - state = active, gap >= 1 → reset (streak broken)
+ *   - anything else → no change (already reset)
  */
 async function recalculateStreak(
     supabase: Awaited<ReturnType<typeof createClient>>,
@@ -283,17 +326,13 @@ async function recalculateStreak(
     if (status === 'absent') {
         if (!lastActivity) return // no streak history yet
 
-        if (currentState === 'active' && diffDays === 1) {
-            // Perfect streak yesterday, miss today → freeze
-            await supabase.from('users').update({ streak_state: 'frozen' }).eq('id', studentId)
-        } else if (currentState === 'frozen') {
-            // Was already frozen, missed again → full reset
+        if (currentState === 'active' && diffDays !== null && diffDays >= 1) {
+            // Missed a day -> reset
             await supabase.from('users').update({
                 streak_days: 0,
                 streak_state: 'reset',
             }).eq('id', studentId)
         }
-        // active with gap > 1 or reset state → no meaningful change
         return
     }
 
@@ -301,7 +340,7 @@ async function recalculateStreak(
     if (lastActivity === today) return // already counted today (idempotent)
 
     let newStreak: number
-    const newState: 'active' | 'frozen' | 'reset' = 'active'
+    const newState: 'active' | 'reset' = 'active'
 
     if (!lastActivity || currentState === 'reset') {
         // First ever attendance, or returning after a full reset
@@ -309,19 +348,8 @@ async function recalculateStreak(
     } else if (diffDays === 1 && currentState === 'active') {
         // Normal consecutive day — earn +1
         newStreak = currentStreak + 1
-    } else if (currentState === 'frozen') {
-        if (diffDays !== null && diffDays <= 2) {
-            // Returning the day after the missed (frozen) day:
-            // gap=2: attended Day X, missed Day X+1 (frozen), attending Day X+2
-            // → UNFREEZE but NO increment. Streak stays the same.
-            // The next consecutive day will earn +1 as normal.
-            newStreak = currentStreak
-        } else {
-            // Frozen and missed 2+ more days → reset, start at 1
-            newStreak = 1
-        }
     } else {
-        // Active but gap ≥ 2 somehow (missed without being frozen) → reset
+        // Missing days without tracking properly -> reset
         newStreak = 1
     }
 
