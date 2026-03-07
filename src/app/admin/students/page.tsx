@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { StudentsClient } from './students-client'
+import { StudentsClient } from '@/app/admin/students/students-client'
+import type { DBStudent, DBXPLog } from '@/app/admin/students/students-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,17 +55,24 @@ export default async function AdminStudentsPage() {
 
     const { data: teams } = await supabase.from('teams').select('id, team_name').order('team_name')
 
-    const formattedStudents = (students || []).map((s: Record<string, unknown> & { team: unknown | unknown[] }) => ({
-        ...s,
+    const formattedStudents: DBStudent[] = (students || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        individual_xp: s.individual_xp,
+        streak_days: s.streak_days,
+        longest_streak: s.longest_streak,
+        last_activity_date: s.last_activity_date,
+        team_id: s.team_id,
         team: Array.isArray(s.team) ? s.team[0] || null : s.team || null,
     }))
 
     return (
         <StudentsClient
             students={formattedStudents}
-            xpLogs={xpLogs || []}
-            teams={teams || []}
-            userScores={userScores || []}
+            xpLogs={(xpLogs as any) || []}
+            teams={(teams as any) || []}
+            userScores={(userScores as any) || []}
         />
     )
 }
