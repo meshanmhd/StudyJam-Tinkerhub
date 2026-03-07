@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { Search, Trophy, Trash2, Pencil, Zap, X, Check, Loader2 } from 'lucide-react'
 import { assignXpToStudent, deleteXpLog, updateStudentProfile } from './actions'
 
-type DBStudent = {
+export type DBStudent = {
     id: string
     name: string
     email: string
@@ -21,7 +21,7 @@ type DBStudent = {
     team: { id: string; team_name: string } | null
 }
 
-type DBXPLog = {
+export type DBXPLog = {
     id: string
     user_id: string | null
     team_id: string | null
