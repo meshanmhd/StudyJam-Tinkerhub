@@ -89,6 +89,7 @@ export interface TaskSubmission {
     approved_by?: string
     approved_at?: string
     xp_given?: number
+    allow_resubmission?: boolean
     task?: Task
     user?: { name: string; team?: { team_name: string } }
 }

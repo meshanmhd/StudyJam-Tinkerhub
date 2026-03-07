@@ -41,6 +41,7 @@ const studentNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
     { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+    { href: '/admin/students', label: 'Students', icon: UsersRound },
     { href: '/admin/tasks', label: 'Task Manager', icon: Settings },
     { href: '/admin/games', label: 'Games', icon: Gamepad2 },
     { href: '/admin/xp', label: 'XP Manager', icon: BarChart3 },
@@ -53,7 +54,7 @@ const adminNav: NavItem[] = [
 // Bottom nav items for mobile (admin: show 3 items + menu)
 const adminMobileNav: NavItem[] = [
     { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-    { href: '/admin/attendance', label: 'Attendance', icon: CalendarCheck },
+    { href: '/admin/students', label: 'Students', icon: UsersRound },
     { href: '/admin/tasks', label: 'Tasks', icon: Settings },
 ]
 

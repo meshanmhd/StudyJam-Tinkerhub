@@ -154,7 +154,7 @@ export function WordleGame({
     const [isValidating, setIsValidating] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [showResult, setShowResult] = useState(false)
-    const startTimeRef = useRef(Date.now())
+    const [startTime] = useState(() => Date.now())
 
     function showInvalid(msg: string) {
         setInvalidMsg(msg)
@@ -169,7 +169,7 @@ export function WordleGame({
     const handleKey = useCallback(async (key: string) => {
         if (gameState !== 'playing' || isValidating) return
 
-        if (key === 'Backspace') {
+        if (key === 'Backspace' || key === '⌫') {
             setCurrentTiles(prev => {
                 const next = [...prev]
                 const lastFilled = next.map((l, i) => l ? i : -1).filter(i => i >= 0).pop()
@@ -234,7 +234,7 @@ export function WordleGame({
             const lost = !won && newRow >= MAX_GUESSES
 
             if (won || lost) {
-                const timeTaken = Math.floor((Date.now() - startTimeRef.current) / 1000)
+                const timeTaken = Math.floor((Date.now() - startTime) / 1000)
                 const guessesArr: string[] = []
                 for (let r = 0; r < currentRow; r++) {
                     guessesArr.push(board[r].map(t => t.letter).join(''))
@@ -255,10 +255,7 @@ export function WordleGame({
             return
         }
 
-        if (key === '⌫') {
-            handleKey('Backspace')
-            return
-        }
+
 
         if (/^[A-Za-z]$/.test(key)) {
             const upper = key.toUpperCase()
@@ -269,7 +266,7 @@ export function WordleGame({
                 return next
             })
         }
-    }, [gameState, isValidating, currentTiles, currentRow, wordLen, targetWord, board, gameId])
+    }, [gameState, isValidating, currentTiles, currentRow, wordLen, targetWord, board, gameId, startTime])
 
     // Physical keyboard + mobile keyboard support
     useEffect(() => {

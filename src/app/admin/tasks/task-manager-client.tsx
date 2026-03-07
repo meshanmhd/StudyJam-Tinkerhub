@@ -14,7 +14,7 @@ import {
 import { createTask } from '../actions'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
-import { Plus, Loader2, ClipboardList, Clock, Hash, Users, User, Search, Filter } from 'lucide-react'
+import { Plus, Loader2, Clock, Hash, Users, User, Search, Filter } from 'lucide-react'
 
 interface Task {
     id: string
@@ -30,15 +30,9 @@ interface Task {
 
 interface TaskManagerClientProps {
     tasks: Task[]
-    stats: {
-        totalStudents: number
-        pendingReviews: number
-        activeTasks: number
-    }
 }
 
-
-export function TaskManagerClient({ tasks, stats }: TaskManagerClientProps) {
+export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
     const router = useRouter()
     const [showForm, setShowForm] = useState(false)
     const [creating, setCreating] = useState(false)
@@ -93,30 +87,7 @@ export function TaskManagerClient({ tasks, stats }: TaskManagerClientProps) {
                 <p className="text-zinc-500 text-sm">Create tasks and review student submissions</p>
             </header>
 
-            {/* Dashboard Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-5 transition-all hover:border-white/20">
-                    <div className="flex items-center space-x-3 mb-3">
-                        <ClipboardList className="text-zinc-500 w-5 h-5" />
-                        <h2 className="text-sm font-medium text-zinc-500">Active Tasks</h2>
-                    </div>
-                    <p className="text-2xl font-bold">{stats.activeTasks}</p>
-                </div>
-                <div className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-5 transition-all hover:border-white/20">
-                    <div className="flex items-center space-x-3 mb-3">
-                        <ClipboardList className="text-zinc-500 w-5 h-5" />
-                        <h2 className="text-sm font-medium text-zinc-500">Pending Reviews</h2>
-                    </div>
-                    <p className="text-2xl font-bold">{stats.pendingReviews}</p>
-                </div>
-                <div className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl p-5 transition-all hover:border-white/20">
-                    <div className="flex items-center space-x-3 mb-3">
-                        <Users className="text-zinc-500 w-5 h-5" />
-                        <h2 className="text-sm font-medium text-zinc-500">Total Students</h2>
-                    </div>
-                    <p className="text-2xl font-bold">{stats.totalStudents}</p>
-                </div>
-            </div>
+
 
             {/* Create task dialog */}
             <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -176,9 +147,7 @@ export function TaskManagerClient({ tasks, stats }: TaskManagerClientProps) {
                                 </select>
                             </div>
                         </div>
-                        {taskType === 'team' && (
-                            <p className="text-[11px] text-muted-foreground -mt-1">XP will be awarded to the team, not individually.</p>
-                        )}
+
 
                         {/* XP + Deadline row */}
                         <div className="grid grid-cols-2 gap-3">
@@ -186,8 +155,8 @@ export function TaskManagerClient({ tasks, stats }: TaskManagerClientProps) {
                                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Reward</Label>
                                 <div className="relative">
                                     <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400" />
-                                    <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="25"
-                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all" />
+                                    <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="eg:25"
+                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-2 ring-border/20 rounded-xl text-sm focus:outline-none" />
                                 </div>
                             </div>
                             <div className="space-y-1.5">
@@ -261,42 +230,36 @@ export function TaskManagerClient({ tasks, stats }: TaskManagerClientProps) {
                             <div
                                 key={task.id}
                                 onClick={() => router.push(`/admin/tasks/${task.id}`)}
-                                className="p-6 hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                                className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer group flex items-center justify-between gap-4"
                             >
-                                <div className="flex justify-between items-start">
-                                    <div className="space-y-3 max-w-3xl">
-                                        <div className="flex items-center flex-wrap gap-3">
-                                            <h3 className={`text-sm font-bold transition-colors ${isPast ? 'text-white/50' : 'text-white group-hover:text-primary'}`}>
-                                                {task.title}
-                                            </h3>
-                                            <div className="flex gap-2">
-                                                {task.task_type === 'individual' ? (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-blue-400 border-blue-400/30">Individual</span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-purple-400 border-purple-400/30">Team</span>
-                                                )}
-
-                                                {pendingCount > 0 && (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border border-white/20 text-yellow-400 border-yellow-400/30 flex items-center gap-1.5">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
-                                                        {pendingCount} Pending Review{pendingCount !== 1 ? 's' : ''}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {task.description && (
-                                            <p className={`text-xs line-clamp-1 mt-1 ${isPast ? 'text-zinc-500/60' : 'text-zinc-500'}`}>{task.description}</p>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className={`text-sm font-semibold transition-colors truncate ${isPast ? 'text-white/50' : 'text-white group-hover:text-primary'}`}>
+                                            {task.title}
+                                        </h3>
+                                        {task.task_type === 'individual' ? (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border text-blue-400 border-blue-400/30 shrink-0">Indiv</span>
+                                        ) : (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border text-purple-400 border-purple-400/30 shrink-0">Team</span>
                                         )}
-                                        {task.deadline && (
-                                            <div className="flex items-center space-x-2 text-xs text-zinc-500/50 mt-4">
-                                                <Clock size={14} />
-                                                <span>{isPast ? 'Ended:' : 'Due:'} {formatDate(task.deadline)}</span>
-                                            </div>
+                                        {pendingCount > 0 && (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold border text-amber-400 border-amber-400/30 flex items-center gap-1 shrink-0">
+                                                <span className="w-1 h-1 rounded-full bg-amber-400"></span>
+                                                {pendingCount} pending
+                                            </span>
                                         )}
                                     </div>
-                                    <div className="text-right">
-                                        <span className={`text-sm font-bold ${isPast ? 'text-white/40' : 'text-white'}`}>+{task.xp_reward} XP</span>
-                                    </div>
+                                    {task.description && (
+                                        <p className={`text-xs line-clamp-1 mt-0.5 ${isPast ? 'text-zinc-600' : 'text-zinc-500'}`}>{task.description}</p>
+                                    )}
+                                </div>
+                                <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
+                                    <span className={`text-xs font-bold ${isPast ? 'text-white/40' : 'text-amber-400'}`}>+{task.xp_reward} XP</span>
+                                    {task.deadline && (
+                                        <span className="text-[10px] text-zinc-600 flex items-center gap-1">
+                                            <Clock size={9} />{isPast ? 'Ended' : 'Due'}: {formatDate(task.deadline)}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         )

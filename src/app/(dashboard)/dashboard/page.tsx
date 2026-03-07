@@ -42,12 +42,13 @@ export default async function DashboardPage() {
     const now = new Date()
     const ONE_HOUR = 60 * 60 * 1000
 
-    // Active tasks: no deadline OR (deadline + 1 hour > now) OR they already submitted it
+    // Active tasks: not submitted AND (no deadline, or within deadline + 1 hour grace)
     const activeTasks = tasks.filter(t => {
-        if (!t.deadline) return true
         const hasSubmitted = !!submissionMap[t.id]
-        if (hasSubmitted) return true
+        if (hasSubmitted) return false
+        if (!t.deadline) return true
         const deadlinePlusGrace = new Date(new Date(t.deadline).getTime() + ONE_HOUR)
+        return deadlinePlusGrace > now
     })
 
     return (
@@ -79,19 +80,11 @@ export default async function DashboardPage() {
 
                     {/* Streak cards */}
                     <div className="grid grid-cols-2 gap-4">
-                        {/* Current Streak — three states: active / frozen / reset */}
+                        {/* Current Streak — two states: active / reset */}
                         {(() => {
                             const state = (profile as { streak_state?: string }).streak_state || 'active'
                             const days = profile.streak_days
 
-                            if (state === 'frozen') return (
-                                <div className="glass rounded-2xl p-4 border border-blue-500/30 flex flex-col justify-center items-center h-full">
-                                    <p className="text-3xl text-center mb-1">❄️</p>
-                                    <p className="text-2xl font-bold text-blue-400 text-center">{days}</p>
-                                    <p className="text-xs text-center text-blue-400 font-medium mt-0.5">Streak Frozen</p>
-                                    <p className="text-[10px] text-center text-muted-foreground/60 mt-0.5">Attend today to keep it!</p>
-                                </div>
-                            )
                             if (state === 'reset' || days === 0) return (
                                 <div className="glass rounded-2xl p-4 border border-rose-500/20 flex flex-col justify-center items-center h-full">
                                     <p className="text-3xl text-center mb-1">💀</p>

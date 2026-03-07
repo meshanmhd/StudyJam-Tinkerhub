@@ -1,0 +1,130 @@
+﻿
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\dashboard\page.tsx
+  42:11  warning  'now' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  50:15  warning  'deadlinePlusGrace' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\[id]\page.tsx
+  40:21  error  Do not use an `<a>` element to navigate to `/games/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\[id]\wordle-game.tsx
+    8:26  warning  'Keyboard' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  121:10  warning  'formatTime' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  157:33  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\[id]\wordle-game.tsx:157:33
+  155 |     const [isSubmitting, setIsSubmitting] = useState(false)
+  156 |     const [showResult, setShowResult] = useState(false)
+> 157 |     const startTimeRef = useRef(Date.now())
+      |                                 ^^^^^^^^^^ Cannot call impure function
+  158 |
+  159 |     function showInvalid(msg: string) {
+  160 |         setInvalidMsg(msg)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/purity
+  259:13  error    Error: Cannot access variable before it is declared
+
+`handleKey` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\[id]\wordle-game.tsx:259:13
+  257 |
+  258 |         if (key === 'Γî½') {
+> 259 |             handleKey('Backspace')
+      |             ^^^^^^^^^ `handleKey` accessed before it is declared
+  260 |             return
+  261 |         }
+  262 |
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\[id]\wordle-game.tsx:169:5
+  167 |     }
+  168 |
+> 169 |     const handleKey = useCallback(async (key: string) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 170 |         if (gameState !== 'playing' || isValidating) return
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 171 |
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 271 |         }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 272 |     }, [gameState, isValidating, currentTiles, currentRow, wordLen, targetWord, board, gameId])
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `handleKey` is declared here
+  273 |
+  274 |     // Physical keyboard + mobile keyboard support
+  275 |     useEffect(() => {  react-hooks/immutability
+  293:46  warning  'i' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\games\games-page-client.tsx
+  5:60  warning  'Award' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\(dashboard)\leaderboard\page.tsx
+  20:11  warning  'teams' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  21:11  warning  'currentUserTeamId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\badges\badge-manager-client.tsx
+  25:10  warning  'getBadgeColor' is defined but never used  @typescript-eslint/no-unused-vars
+  26:10  warning  'cn' is defined but never used             @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\games\[id]\page.tsx
+  27:21  error  Do not use an `<a>` element to navigate to `/admin/games/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\games\games-client.tsx
+  10:26  warning  'Trophy' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\leaderboard\page.tsx
+  15:23  warning  'teamsRes' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\page.tsx
+  26:59  error  Unexpected any. Specify a different type                                                                                                                           @typescript-eslint/no-explicit-any
+  49:17  error  Do not use an `<a>` element to navigate to `/admin/tasks/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\session\session-mode-client.tsx
+  34:18  warning  'setLogs' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\students\page.tsx
+  57:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\students\students-client.tsx
+  43:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\tasks\[id]\task-detail-client.tsx
+   18:25  warning  'FileText' is defined but never used           @typescript-eslint/no-unused-vars
+   31:7   warning  'inputCls' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  246:47  warning  'initials' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\tasks\task-manager-client.tsx
+  17:25  warning  'ClipboardList' is defined but never used  @typescript-eslint/no-unused-vars
+  41:44  warning  'stats' is defined but never used          @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\teams\page.tsx
+  25:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\teams\team-manager-client.tsx
+  562:64  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  562:89  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\admin\xp\xp-manager-client.tsx
+  11:10  warning  'timeAgo' is defined but never used              @typescript-eslint/no-unused-vars
+  14:7   warning  'CATEGORIES' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  55:11  warning  'inputCls' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\app\login\login-form.tsx
+  78:24  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\components\dashboard\realtime-leaderboard.tsx
+  45:8  warning  React Hook useEffect has a missing dependency: 'fetchLeaderboard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  50:8  warning  React Hook useEffect has a missing dependency: 'fetchLeaderboard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\components\dashboard\task-card.tsx
+   5:10  warning  'Badge' is defined but never used                  @typescript-eslint/no-unused-vars
+  19:10  warning  'Label' is defined but never used                  @typescript-eslint/no-unused-vars
+  40:7   warning  'STATUS_ICONS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  50:21  warning  'setContent' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\components\layout\edit-profile-dialog.tsx
+  65:83  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\ShanMhd\StudyJam-Tinkerhub\src\utils\supabase\middleware.ts
+  18:58  warning  'options' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 41 problems (13 errors, 28 warnings)
+

@@ -12,6 +12,7 @@ import {
     DialogFooter,
     DialogDescription,
 } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { reviewSubmission, updateTask, endTask, deleteTask } from '../../actions'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
@@ -39,6 +40,8 @@ export function TaskDetailClient({ task, submissions }: TaskDetailClientProps) {
     const [reviewDialogSub, setReviewDialogSub] = useState<SubmissionWithUser | null>(null)
     const [xpInput, setXpInput] = useState('')
     const [rejectComment, setRejectComment] = useState('')
+    const [pendingAction, setPendingAction] = useState<'approved' | 'rejected' | null>(null)
+    const [allowResubmission, setAllowResubmission] = useState(true)
 
     // Task Actions Dialogs
     const [showEditDialog, setShowEditDialog] = useState(false)
@@ -59,6 +62,8 @@ export function TaskDetailClient({ task, submissions }: TaskDetailClientProps) {
         setReviewDialogSub(sub)
         setXpInput(String(task.xp_reward || 0))
         setRejectComment('')
+        setPendingAction(null)
+        setAllowResubmission(true)
     }
 
     async function handleReviewAction(action: 'approved' | 'rejected') {
@@ -73,7 +78,8 @@ export function TaskDetailClient({ task, submissions }: TaskDetailClientProps) {
             action === 'approved' ? xp : 0,
             task.id,
             sub.user_id,
-            action === 'rejected' ? rejectComment : undefined
+            action === 'rejected' ? rejectComment : undefined,
+            action === 'rejected' ? allowResubmission : true
         )
 
         if (result.error) {
@@ -84,7 +90,8 @@ export function TaskDetailClient({ task, submissions }: TaskDetailClientProps) {
                 ...s,
                 status: action,
                 xp_given: action === 'approved' ? xp : undefined,
-                admin_comment: action === 'rejected' ? rejectComment : undefined
+                admin_comment: action === 'rejected' ? rejectComment : undefined,
+                allow_resubmission: action === 'rejected' ? allowResubmission : true
             } : s))
             setReviewDialogSub(null)
             router.refresh()
@@ -324,49 +331,98 @@ export function TaskDetailClient({ task, submissions }: TaskDetailClientProps) {
                         )}
 
                         <div className="space-y-4 pt-4 border-t border-[#1F1F1F]">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">XP to Award (If Approving)</Label>
-                                <div className="relative">
-                                    <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-500" />
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        value={xpInput}
-                                        onChange={e => setXpInput(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-3 bg-black border border-[#1F1F1F] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white transition-all text-white placeholder:text-zinc-600"
-                                    />
-                                </div>
+                            {/* Action selector buttons */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setPendingAction('rejected')}
+                                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-bold transition-colors ${pendingAction === 'rejected'
+                                        ? 'bg-rose-500/15 border-rose-500/40 text-rose-400'
+                                        : 'bg-transparent border-[#2a2a2a] text-zinc-500 hover:border-rose-500/30 hover:text-rose-400'
+                                        }`}
+                                >
+                                    <X size={15} /> Reject
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPendingAction('approved')}
+                                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-bold transition-colors ${pendingAction === 'approved'
+                                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                                        : 'bg-transparent border-[#2a2a2a] text-zinc-500 hover:border-emerald-500/30 hover:text-emerald-400'
+                                        }`}
+                                >
+                                    <Check size={15} /> Approve
+                                </button>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Reason (If Rejecting)</Label>
-                                <textarea
-                                    rows={2}
-                                    value={rejectComment}
-                                    onChange={e => setRejectComment(e.target.value)}
-                                    placeholder="Explain what needs to be fixed..."
-                                    className="w-full px-4 py-3 bg-black border border-[#1F1F1F] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white transition-all text-white placeholder:text-zinc-600 resize-none"
-                                />
-                            </div>
+                            {/* XP input – only when approving */}
+                            {pendingAction === 'approved' && (
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">XP to Award</Label>
+                                    <div className="relative">
+                                        <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-500" />
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            value={xpInput}
+                                            onChange={e => setXpInput(e.target.value)}
+                                            className="w-full pl-9 pr-4 py-3 bg-black border border-[#1F1F1F] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white transition-all text-white placeholder:text-zinc-600"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Rejection comment – only when rejecting */}
+                            {pendingAction === 'rejected' && (
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Rejection Reason</Label>
+                                    <textarea
+                                        rows={3}
+                                        value={rejectComment}
+                                        onChange={e => setRejectComment(e.target.value)}
+                                        placeholder="Explain what needs to be fixed..."
+                                        className="w-full px-4 py-3 bg-black border border-[#1F1F1F] rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white transition-all text-white placeholder:text-zinc-600 resize-none"
+                                    />
+
+                                    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 mt-2">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-medium text-white">Allow Resubmission</Label>
+                                            <p className="text-[11px] text-zinc-500">Enable student to fix and try again</p>
+                                        </div>
+                                        <Switch
+                                            checked={allowResubmission}
+                                            onCheckedChange={setAllowResubmission}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-[#1F1F1F]">
                         <div className="flex w-full gap-3">
                             <Button
-                                variant="outline"
-                                disabled={reviewing === reviewDialogSub?.id}
-                                onClick={() => handleReviewAction('rejected')}
-                                className="flex-1 rounded-xl text-rose-400 border-rose-500/20 hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors h-10 font-bold bg-transparent"
+                                variant="ghost"
+                                onClick={() => setReviewDialogSub(null)}
+                                className="flex-1 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 h-10"
                             >
-                                <X size={16} className="mr-2" /> Reject
+                                Cancel
                             </Button>
                             <Button
-                                disabled={reviewing === reviewDialogSub?.id}
-                                onClick={() => handleReviewAction('approved')}
-                                className="flex-1 bg-white text-black hover:bg-gray-200 rounded-xl h-10 font-bold transition-colors"
+                                disabled={reviewing === reviewDialogSub?.id || !pendingAction}
+                                onClick={() => pendingAction && handleReviewAction(pendingAction)}
+                                className={`flex-1 rounded-xl h-10 font-bold transition-colors ${pendingAction === 'rejected'
+                                    ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                                    : pendingAction === 'approved'
+                                        ? 'bg-emerald-500 hover:bg-emerald-600 text-black'
+                                        : 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
+                                    }`}
                             >
-                                {reviewing === reviewDialogSub?.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} className="mr-2" />}
-                                Approve
+                                {reviewing === reviewDialogSub?.id
+                                    ? <Loader2 size={16} className="animate-spin" />
+                                    : pendingAction === 'rejected' ? <><X size={15} className="mr-1.5" />Confirm Reject</>
+                                        : pendingAction === 'approved' ? <><Check size={15} className="mr-1.5" />Confirm Approve</>
+                                            : 'Select Action'
+                                }
                             </Button>
                         </div>
                     </DialogFooter>

@@ -1,0 +1,6 @@
+﻿.next/types/validator.ts(105,39): error TS2307: Cannot find module '../../src/app/admin/analytics/page.js' or its corresponding type declarations.
+.next/types/validator.ts(195,39): error TS2307: Cannot find module '../../src/app/admin/weekly/page.js' or its corresponding type declarations.
+src/app/admin/students/page.tsx(59,13): error TS2322: Type '{ id: any; name: any; email: any; role: any; individual_xp: any; streak_days: any; longest_streak: any; last_activity_date: any; team_id: any; team: { id: any; team_name: any; }[]; }[]' is not assignable to type 'DBStudent[]'.
+  Type '{ id: any; name: any; email: any; role: any; individual_xp: any; streak_days: any; longest_streak: any; last_activity_date: any; team_id: any; team: { id: any; team_name: any; }[]; }' is not assignable to type 'DBStudent'.
+    Types of property 'team' are incompatible.
+      Type '{ id: any; team_name: any; }[]' is missing the following properties from type '{ id: string; team_name: string; }': id, team_name

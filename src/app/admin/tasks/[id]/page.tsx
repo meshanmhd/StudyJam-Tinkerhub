@@ -20,7 +20,7 @@ export default async function AdminTaskDetailPage({ params }: { params: Promise<
 
     const { data: submissions } = await supabase
         .from('task_submissions')
-        .select('*, user:users(name, team:teams(team_name))')
+        .select('*, user:users!task_submissions_user_id_fkey(name, team:teams(team_name))')
         .eq('task_id', id)
         .order('submitted_at', { ascending: false })
 

@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import { WordleGame } from './wordle-game'
 
 export default async function PlayGamePage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,7 +38,7 @@ export default async function PlayGamePage({ params }: { params: Promise<{ id: s
         <div className="space-y-6">
             <div>
                 <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    <a href="/games" className="hover:text-foreground transition-colors">Games</a>
+                    <Link href="/games" className="hover:text-foreground transition-colors">Games</Link>
                     <span>/</span>
                     <span>{game.title}</span>
                 </div>
