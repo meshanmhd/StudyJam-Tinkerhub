@@ -6,7 +6,8 @@ import { TaskCard } from '@/components/dashboard/task-card'
 import { BadgeGrid } from '@/components/dashboard/badge-grid'
 import { RealtimeLeaderboard } from '@/components/dashboard/realtime-leaderboard'
 import { RefreshButton } from '@/components/ui/refresh-button'
-import type { Task, TaskSubmission, UserBadge, UserScore } from '@/types'
+import { getStudyJamLevels } from '@/app/actions'
+import type { Task, TaskSubmission, UserBadge, UserScore, Level } from '@/types'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -14,12 +15,13 @@ export default async function DashboardPage() {
     if (!user) redirect('/login')
 
     // Parallel data fetching
-    const [profileRes, scoresRes, tasksRes, submissionsRes, badgesRes] = await Promise.all([
+    const [profileRes, scoresRes, tasksRes, submissionsRes, badgesRes, levels] = await Promise.all([
         supabase.from('users').select('*, team:teams(*)').eq('id', user.id).single(),
         supabase.from('user_scores').select('*').order('final_score', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('task_submissions').select('*').eq('user_id', user.id),
         supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', user.id),
+        getStudyJamLevels()
     ])
 
     const profile = profileRes.data
@@ -73,9 +75,9 @@ export default async function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Left Column (60%) */}
                 <div className="lg:col-span-7 space-y-6">
-                    {/* Level card — now driven by impact score */}
+                    {/* Level card — now driven by impact score and dynamic levels */}
                     <div>
-                        <LevelCard impact={impactScore} />
+                        <LevelCard impact={impactScore} levels={levels} />
                     </div>
 
                     {/* Streak cards */}

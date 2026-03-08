@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import { Loader2, Hash, FileText, Calendar, Users, Trophy, Pencil, PauseOctagon, Trash2, Check, X, Clock, User } from 'lucide-react'
 import { Task, TaskSubmission } from '@/types'
+import { DateTimePicker } from '@/components/ui/datetime-picker'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface SubmissionWithUser extends Omit<TaskSubmission, 'user'> {
     user?: { name?: string; team?: { team_name?: string } | null } | null
@@ -457,44 +459,32 @@ export function TaskDetailClient({ task, submissions }: TaskDetailClientProps) {
                         {/* Task Type */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Task Type</Label>
-                            <div className="flex gap-2 h-11">
-                                <button
-                                    type="button"
-                                    onClick={() => setEditTaskType('individual')}
-                                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-xs transition-all ${editTaskType === 'individual' ? 'bg-white/10 border-white/20 text-white' : 'border-white/5 text-zinc-500 hover:border-white/20 bg-transparent'}`}
-                                >
-                                    <User size={14} /> Individual
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setEditTaskType('team')}
-                                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-xs transition-all ${editTaskType === 'team' ? 'bg-white/10 border-white/20 text-white' : 'border-white/5 text-zinc-500 hover:border-white/20 bg-transparent'}`}
-                                >
-                                    <Users size={14} /> Team
-                                </button>
+                            <Tabs value={editTaskType} onValueChange={(val) => setEditTaskType(val as 'individual' | 'team')} className="w-full h-11">
+                                <TabsList className="w-full h-full bg-[#121212] border border-[#1F1F1F] p-1 rounded-xl">
+                                    <TabsTrigger value="individual" className="flex-1 rounded-lg text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white transition-all text-zinc-500">
+                                        <User size={14} className="mr-1.5" /> Individual
+                                    </TabsTrigger>
+                                    <TabsTrigger value="team" className="flex-1 rounded-lg text-xs data-[state=active]:bg-white/10 data-[state=active]:text-white transition-all text-zinc-500">
+                                        <Users size={14} className="mr-1.5" /> Team
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        </div>
+
+                        {/* XP Reward */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">XP Reward</Label>
+                            <div className="relative">
+                                <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-500" />
+                                <input id="xp_reward" name="xp_reward" type="number" required min={1} defaultValue={task.xp_reward}
+                                    className="w-full pl-9 pr-4 py-2.5 h-11 bg-[#121212] border border-[#1F1F1F] ring-1 ring-white/1 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500/1 transition-all text-white" />
                             </div>
                         </div>
 
-                        {/* XP + Deadline row */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">XP Reward</Label>
-                                <div className="relative">
-                                    <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-500" />
-                                    <input id="xp_reward" name="xp_reward" type="number" required min={1} defaultValue={task.xp_reward}
-                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-[#121212] border border-[#1F1F1F] ring-1 ring-white/1 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500/1 transition-all text-white" />
-                                </div>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Deadline</Label>
-                                <div className="relative">
-                                    <Clock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
-                                    <Calendar size={14} className="absolute right-4.5 top-1/2 -translate-y-1/2 text-zinc-500" />
-                                    <input id="deadline" name="deadline" type="datetime-local" defaultValue={task.deadline ? task.deadline.slice(0, 16) : ''}
-                                        onClick={(e) => 'showPicker' in HTMLInputElement.prototype && e.currentTarget.showPicker()}
-                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-[#121212] border border-[#1F1F1F] ring-1 ring-white/1 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white focus:border-white/1 transition-all cursor-pointer text-white" />
-                                </div>
-                            </div>
+                        {/* Deadline */}
+                        <div className="space-y-1.5 pt-1">
+                            <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Deadline</Label>
+                            <DateTimePicker name="deadline" id="deadline" defaultValue={task.deadline ? task.deadline.slice(0, 16) : ''} />
                         </div>
 
                         <DialogFooter className="pt-4 mt-2">

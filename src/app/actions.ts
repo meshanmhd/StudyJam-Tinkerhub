@@ -2,6 +2,20 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { Level } from '@/types'
+
+export async function getStudyJamLevels(): Promise<Level[]> {
+    const supabase = await createClient()
+    const { data } = await supabase.from('study_jam_levels').select('*').order('level', { ascending: true })
+    if (!data) return []
+    return data.map(dbLevel => ({
+        id: dbLevel.id,
+        level: dbLevel.level,
+        title: dbLevel.title,
+        minImpact: dbLevel.min_impact,
+        maxImpact: dbLevel.max_impact,
+    }))
+}
 
 export async function updateProfileName(newName: string) {
     if (!newName || newName.trim().length < 2) {

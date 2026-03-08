@@ -11,10 +11,13 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createTask } from '../actions'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import { Plus, Loader2, Clock, Hash, Users, User, Search, Filter } from 'lucide-react'
+import { DateTimePicker } from '@/components/ui/datetime-picker'
 
 interface Task {
     id: string
@@ -119,55 +122,48 @@ export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Type</Label>
-                                <div className="flex gap-2 h-11">
-                                    <button
-                                        type="button"
-                                        onClick={() => setTaskType('individual')}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-xs transition-all ${taskType === 'individual' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
-                                    >
-                                        <User size={14} /> Individual
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setTaskType('team')}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-xs transition-all ${taskType === 'team' ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border/40 text-muted-foreground hover:border-border/70'}`}
-                                    >
-                                        <Users size={14} /> Team
-                                    </button>
-                                </div>
+                                <Tabs value={taskType} onValueChange={(val) => setTaskType(val as 'individual' | 'team')} className="w-full h-11">
+                                    <TabsList className="w-full h-full bg-muted/20 border border-border/40 p-1 rounded-xl">
+                                        <TabsTrigger value="individual" className="flex-1 rounded-lg text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary transition-all">
+                                            <User size={14} className="mr-1.5" /> Individual
+                                        </TabsTrigger>
+                                        <TabsTrigger value="team" className="flex-1 rounded-lg text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary transition-all">
+                                            <Users size={14} className="mr-1.5" /> Team
+                                        </TabsTrigger>
+                                    </TabsList>
+                                </Tabs>
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Difficulty Level</Label>
-                                <select name="level" className={`${inputCls} bg-black text-white border-gray-700 rounded-md appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2371717a%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-no-repeat bg-[position:right_12px_center] pr-10`} defaultValue="">
-                                    <option value="" disabled>Select level...</option>
-                                    <option value="Beginner">Beginner</option>
-                                    <option value="Intermediate">Intermediate</option>
-                                    <option value="Advanced">Advanced</option>
-                                    <option value="Expert">Expert</option>
-                                </select>
+                                <Select name="level" defaultValue="">
+                                    <SelectTrigger className={`${inputCls} bg-black text-white hover:bg-muted/10 transition-colors`}>
+                                        <SelectValue placeholder="Select level..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-black border-border/40 text-white rounded-xl shadow-2xl">
+                                        <SelectItem value="Beginner" className="focus:bg-white/10 focus:text-white rounded-lg cursor-pointer">Beginner</SelectItem>
+                                        <SelectItem value="Intermediate" className="focus:bg-white/10 focus:text-white rounded-lg cursor-pointer">Intermediate</SelectItem>
+                                        <SelectItem value="Advanced" className="focus:bg-white/10 focus:text-white rounded-lg cursor-pointer">Advanced</SelectItem>
+                                        <SelectItem value="Expert" className="focus:bg-white/10 focus:text-white rounded-lg cursor-pointer">Expert</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
 
-                        {/* XP + Deadline row */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Reward</Label>
-                                <div className="relative">
-                                    <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400" />
-                                    <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="eg:25"
-                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-2 ring-border/20 rounded-xl text-sm focus:outline-none" />
-                                </div>
+                        {/* XP Reward */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Reward</Label>
+                            <div className="relative">
+                                <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400" />
+                                <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="eg:25"
+                                    className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-2 ring-border/20 rounded-xl text-sm focus:outline-none" />
                             </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Deadline</Label>
-                                <div className="relative">
-                                    <Clock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
-                                    <input id="deadline" name="deadline" type="datetime-local"
-                                        onClick={(e) => 'showPicker' in HTMLInputElement.prototype && e.currentTarget.showPicker()}
-                                        className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all cursor-pointer" />
-                                </div>
-                            </div>
+                        </div>
+
+                        {/* Deadline */}
+                        <div className="space-y-1.5 pt-1">
+                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Deadline</Label>
+                            <DateTimePicker name="deadline" id="deadline" />
                         </div>
 
                         <DialogFooter className="pt-4 mt-2">
@@ -196,16 +192,17 @@ export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto relative">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4 z-10 pointer-events-none" />
-                            <select
-                                className="w-full sm:w-auto text-sm bg-black border border-[#1F1F1F] rounded-lg py-2.5 pl-9 pr-10 focus:outline-none focus:ring-1 focus:ring-white text-white appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20stroke%3D%22%2371717a%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-no-repeat bg-[position:right_10px_center]"
-                                value={filterBy}
-                                onChange={(e) => setFilterBy(e.target.value)}
-                            >
-                                <option value="All">All Tasks</option>
-                                <option value="Active">Active</option>
-                                <option value="Pending Review">Pending Review</option>
-                                <option value="Ended">Ended</option>
-                            </select>
+                            <Select value={filterBy} onValueChange={setFilterBy}>
+                                <SelectTrigger className="w-full sm:w-40 text-sm bg-black border border-[#1F1F1F] rounded-lg h-[41.5px] pl-10 pr-4 focus:ring-1 focus:ring-white text-white hover:bg-white/[0.02] transition-colors focus:border-[#1F1F1F] ring-offset-black">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-black border-[#1F1F1F] text-white rounded-lg shadow-2xl">
+                                    <SelectItem value="All" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">All Tasks</SelectItem>
+                                    <SelectItem value="Active" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">Active</SelectItem>
+                                    <SelectItem value="Pending Review" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">Pending Review</SelectItem>
+                                    <SelectItem value="Ended" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">Ended</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                     <button

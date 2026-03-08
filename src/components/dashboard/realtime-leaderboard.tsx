@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Leaderboard } from '@/components/dashboard/leaderboard'
-import { UserScore } from '@/types'
+import { UserScore, Level } from '@/types'
 import { Button } from '@/components/ui/button'
 import { RefreshCcw } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
@@ -10,9 +10,10 @@ import { createClient } from '@/utils/supabase/client'
 interface RealtimeLeaderboardProps {
     initialScores: UserScore[]
     currentUserId: string
+    levels?: Level[]
 }
 
-export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLeaderboardProps) {
+export function RealtimeLeaderboard({ initialScores, currentUserId, levels }: RealtimeLeaderboardProps) {
     const [scores, setScores] = useState<UserScore[]>(initialScores)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [view, setView] = useState<'individual' | 'team'>('individual')
@@ -100,6 +101,7 @@ export function RealtimeLeaderboard({ initialScores, currentUserId }: RealtimeLe
                     currentUserScore={currentUserScore}
                     viewMode={view}
                     limit={5}
+                    levels={levels}
                 />
             </div>
         </div>

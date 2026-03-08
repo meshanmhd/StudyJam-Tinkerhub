@@ -1,6 +1,6 @@
 'use client'
 
-import { getUserLevel, getLevelProgress, getNextLevel } from '@/types'
+import { getUserLevel, getLevelProgress, getNextLevel, Level } from '@/types'
 import { cn } from '@/lib/utils'
 
 
@@ -16,14 +16,16 @@ const LEVEL_BADGES = ['🌱', '🔨', '🎨', '🏛️', '⭐']
 
 interface LevelCardProps {
     impact: number
+    levels?: Level[]
 }
 
-export function LevelCard({ impact }: LevelCardProps) {
-    const level = getUserLevel(impact)
-    const progress = getLevelProgress(impact)
-    const nextLevel = getNextLevel(impact)
-    const colorClass = LEVEL_COLORS[level.level - 1]
-    const badge = LEVEL_BADGES[level.level - 1]
+export function LevelCard({ impact, levels }: LevelCardProps) {
+    const level = getUserLevel(impact, levels)
+    const progress = getLevelProgress(impact, levels)
+    const nextLevel = getNextLevel(impact, levels)
+    const colorIndex = (level.level - 1) % LEVEL_COLORS.length
+    const colorClass = LEVEL_COLORS[colorIndex]
+    const badge = LEVEL_BADGES[colorIndex]
 
     return (
         <div className="glass rounded-2xl p-6 relative overflow-hidden">

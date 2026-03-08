@@ -2,7 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Leaderboard } from '@/components/dashboard/leaderboard'
 import { RefreshButton } from '@/components/ui/refresh-button'
-import type { UserScore } from '@/types'
+import { getStudyJamLevels } from '@/app/actions'
+import type { UserScore, Level } from '@/types'
 
 export default async function AdminLeaderboardPage() {
     const supabase = await createClient()
@@ -12,9 +13,10 @@ export default async function AdminLeaderboardPage() {
     const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
     if (profile?.role !== 'admin') redirect('/login')
 
-    const [scoresRes, teamsRes] = await Promise.all([
+    const [scoresRes, teamsRes, levels] = await Promise.all([
         supabase.from('user_scores').select('*').order('final_score', { ascending: false }),
         supabase.from('teams').select('*').order('team_xp', { ascending: false }),
+        getStudyJamLevels()
     ])
 
     const scoresResData: UserScore[] = scoresRes.data || []
@@ -40,6 +42,7 @@ export default async function AdminLeaderboardPage() {
                         <Leaderboard
                             students={scores}
                             currentUserId=""
+                            levels={levels}
                         />
                     </div>
                 </div>
@@ -54,6 +57,7 @@ export default async function AdminLeaderboardPage() {
                             students={scores.filter(s => s.team_id)}
                             currentUserId=""
                             viewMode="team"
+                            levels={levels}
                         />
                     </div>
                 </div>
