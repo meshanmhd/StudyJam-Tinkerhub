@@ -16,6 +16,7 @@ import {
     Gamepad2,
     Menu,
     X,
+    User,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/auth/actions'
@@ -23,6 +24,14 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Logo } from '@/components/ui/logo'
 import { EditProfileDialog } from '@/components/layout/edit-profile-dialog'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useState } from 'react'
 
 interface NavItem {
@@ -125,19 +134,41 @@ export function Sidebar({ role, userName, userEmail }: SidebarProps) {
                             <p className="text-sm font-medium truncate">{userName}</p>
                             <p className="text-[11px] text-muted-foreground truncate">{userEmail}</p>
                         </div>
-                        <EditProfileDialog currentName={userName} />
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56 rounded-xl border-0 shadow-2xl bg-[#0A0A0A] p-1.5" align="start" side="top" sideOffset={12}>
+                                <DropdownMenuGroup className="mt-1">
+                                    <EditProfileDialog currentName={userName}>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer gap-3 rounded-lg px-2.5 py-2 hover:bg-muted/50 transition-colors mt-0.5">
+                                            <User size={15} />
+                                            <span>Profile</span>
+                                        </DropdownMenuItem>
+                                    </EditProfileDialog>
+                                    {role === 'admin' && (
+                                        <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2.5 py-2 hover:bg-muted/50 transition-colors">
+                                            <Link href="/admin/settings">
+                                                <Settings size={15} />
+                                                <span>Settings</span>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuGroup>
+                                <DropdownMenuSeparator className="bg-border/10 my-1" />
+                                <form action={logout}>
+                                    <DropdownMenuItem asChild className="text-destructive bg-destructive/10 focus:bg-destructive/20 focus:text-destructive cursor-pointer gap-3 rounded-lg px-2.5 py-2 transition-colors">
+                                        <button type="submit" className="w-full text-left flex items-center gap-3">
+                                            <LogOut size={15} className="text-destructive" />
+                                            <span>Sign out</span>
+                                        </button>
+                                    </DropdownMenuItem>
+                                </form>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
-                    <form action={logout}>
-                        <Button
-                            type="submit"
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-sm"
-                        >
-                            <LogOut size={14} />
-                            Sign out
-                        </Button>
-                    </form>
                 </div>
             </aside>
 
@@ -155,22 +186,46 @@ export function Sidebar({ role, userName, userEmail }: SidebarProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <EditProfileDialog currentName={userName}>
-                        <button className="relative w-7 h-7 rounded-full overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer">
-                            <Avatar className="w-full h-full">
-                                <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">{initials}</AvatarFallback>
-                            </Avatar>
-                        </button>
-                    </EditProfileDialog>
-                    <form action={logout}>
-                        <button
-                            type="submit"
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                            aria-label="Sign out"
-                        >
-                            <LogOut size={16} />
-                        </button>
-                    </form>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="relative w-7 h-7 rounded-full overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer">
+                                <Avatar className="w-full h-full">
+                                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">{initials}</AvatarFallback>
+                                </Avatar>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-64 rounded-xl border-0 shadow-2xl bg-[#0A0A0A] p-1.5" align="end" sideOffset={12}>
+                            <div className="flex flex-col space-y-1.5 px-3 py-2.5 mb-1 border-b border-border/10">
+                                <p className="text-sm font-semibold leading-none">{userName}</p>
+                                <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                            </div>
+                            <DropdownMenuGroup className="mt-1">
+                                <EditProfileDialog currentName={userName}>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer gap-3 rounded-lg px-2.5 py-2 hover:bg-muted/50 transition-colors mt-0.5">
+                                        <User size={15} />
+                                        <span>Profile</span>
+                                    </DropdownMenuItem>
+                                </EditProfileDialog>
+                                {role === 'admin' && (
+                                    <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2.5 py-2 hover:bg-muted/50 transition-colors">
+                                        <Link href="/admin/settings">
+                                            <Settings size={15} />
+                                            <span>Settings</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuGroup>
+                            <DropdownMenuSeparator className="bg-border/10 my-1" />
+                            <form action={logout}>
+                                <DropdownMenuItem asChild className="text-destructive bg-destructive/10 focus:bg-destructive/20 focus:text-destructive cursor-pointer gap-3 rounded-lg px-2.5 py-2 transition-colors">
+                                    <button type="submit" className="w-full text-left flex items-center gap-3">
+                                        <LogOut size={15} className="text-destructive" />
+                                        <span>Sign out</span>
+                                    </button>
+                                </DropdownMenuItem>
+                            </form>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </header>
 

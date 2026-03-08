@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Search, Trophy, Trash2, Pencil, Zap, X, Check, Loader2 } from 'lucide-react'
 import { assignXpToStudent, deleteXpLog, updateStudentProfile } from './actions'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export type DBStudent = {
     id: string
@@ -320,14 +321,15 @@ export function StudentsClient({
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-[11px] text-zinc-500 uppercase tracking-wider">Team</Label>
-                                                <select
-                                                    value={editTeamId}
-                                                    onChange={e => setEditTeamId(e.target.value)}
-                                                    className="w-full px-3 py-2 bg-[#111] border border-[#222] rounded-lg text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
-                                                >
-                                                    <option value="">No Team</option>
-                                                    {teams.map(t => <option key={t.id} value={t.id}>{t.team_name}</option>)}
-                                                </select>
+                                                <Select value={editTeamId || "none"} onValueChange={(val) => setEditTeamId(val === "none" ? "" : val)}>
+                                                    <SelectTrigger className="w-full px-3 h-9 bg-[#111] border border-[#222] rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/30 truncate text-left">
+                                                        <SelectValue placeholder="Select Team" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-[#111] border-[#222] text-white rounded-lg shadow-xl">
+                                                        <SelectItem value="none" className="focus:bg-white/10 focus:text-white cursor-pointer rounded-md">No Team</SelectItem>
+                                                        {teams.map(t => <SelectItem key={t.id} value={t.id} className="focus:bg-white/10 focus:text-white cursor-pointer rounded-md">{t.team_name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
                                         <div className="flex gap-2 pt-1">

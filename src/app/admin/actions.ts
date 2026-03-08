@@ -282,83 +282,71 @@ export async function removeBadge(userBadgeId: string) {
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
-/**
- * Streak state machine:
- *
- * PRESENT rules:
- *   - No history / after reset  → streak = 1, state = active
- *   - Same day (idempotent)     → no change
- *   - gap = 1 AND state=active  → streak++, state = active  (normal)
- *   - state = active, gap >= 2  → reset → streak = 1
- *
- * ABSENT rules:
- *   - state = active, gap >= 1 → reset (streak broken)
- *   - anything else → no change (already reset)
- */
 async function recalculateStreak(
     supabase: Awaited<ReturnType<typeof createClient>>,
-    studentId: string,
-    attendanceDate: string,
-    status: 'present' | 'absent' | 'no_class'
+    studentId: string
 ) {
-    if (status === 'no_class') return
+    const { data: records } = await supabase
+        .from('attendance')
+        .select('date, status')
+        .eq('student_id', studentId)
+        .order('date', { ascending: true })
 
-    const { data: currentUser } = await supabase
-        .from('users')
-        .select('streak_days, longest_streak, last_activity_date, streak_state')
-        .eq('id', studentId)
-        .single()
+    if (!records) return
 
-    if (!currentUser) return
-
-    const today = attendanceDate
-    const lastActivity = currentUser.last_activity_date as string | null
-    const currentStreak = currentUser.streak_days || 0
-    const longestStreak = currentUser.longest_streak || 0
-    const currentState = (currentUser.streak_state || 'active') as 'active' | 'frozen' | 'reset'
+    let currentStreak = 0
+    let longestStreak = 0
+    let lastActivityDate: string | null = null
+    let lastValidDate: Date | null = null
 
     const msPerDay = 1000 * 60 * 60 * 24
-    const diffDays = lastActivity
-        ? Math.round((new Date(today).getTime() - new Date(lastActivity).getTime()) / msPerDay)
-        : null
 
-    // ── ABSENT branch ──────────────────────────────────────────────────────────
-    if (status === 'absent') {
-        if (!lastActivity) return // no streak history yet
+    for (const record of records) {
+        // Parse date reliably as UTC midnight
+        const [y, m, d] = record.date.split('-').map(Number)
+        const recordDate = new Date(Date.UTC(y, m - 1, d))
 
-        if (currentState === 'active' && diffDays !== null && diffDays >= 1) {
-            // Missed a day -> reset
-            await supabase.from('users').update({
-                streak_days: 0,
-                streak_state: 'reset',
-            }).eq('id', studentId)
+        if (record.status === 'absent') {
+            currentStreak = 0
+            lastValidDate = null
+            continue
         }
-        return
+
+        if (record.status === 'present') {
+            if (!lastValidDate) {
+                currentStreak = 1
+            } else {
+                const diffDays = Math.round((recordDate.getTime() - lastValidDate.getTime()) / msPerDay)
+                if (diffDays === 1) {
+                    currentStreak += 1
+                } else {
+                    currentStreak = 1 // Gap means streak broken
+                }
+            }
+            lastActivityDate = record.date
+            longestStreak = Math.max(longestStreak, currentStreak)
+            lastValidDate = recordDate
+        } else if (record.status === 'no_class') {
+            if (lastValidDate) {
+                const diffDays = Math.round((recordDate.getTime() - lastValidDate.getTime()) / msPerDay)
+                if (diffDays === 1) {
+                    lastValidDate = recordDate // bridge the gap
+                } else {
+                    currentStreak = 0 // broken before no_class
+                    lastValidDate = recordDate
+                }
+            } else {
+                lastValidDate = recordDate
+            }
+        }
     }
 
-    // ── PRESENT branch ─────────────────────────────────────────────────────────
-    if (lastActivity === today) return // already counted today (idempotent)
-
-    let newStreak: number
-    const newState: 'active' | 'reset' = 'active'
-
-    if (!lastActivity || currentState === 'reset') {
-        // First ever attendance, or returning after a full reset
-        newStreak = 1
-    } else if (diffDays === 1 && currentState === 'active') {
-        // Normal consecutive day — earn +1
-        newStreak = currentStreak + 1
-    } else {
-        // Missing days without tracking properly -> reset
-        newStreak = 1
-    }
-
-    const newLongest = Math.max(longestStreak, newStreak)
+    const newState = currentStreak > 0 ? 'active' : 'reset'
 
     await supabase.from('users').update({
-        streak_days: newStreak,
-        longest_streak: newLongest,
-        last_activity_date: today,
+        streak_days: currentStreak,
+        longest_streak: longestStreak,
+        last_activity_date: lastActivityDate,
         streak_state: newState,
     }).eq('id', studentId)
 }
@@ -383,14 +371,42 @@ export async function markAttendanceBulk(
         .upsert(rows, { onConflict: 'student_id,date' })
     if (error) return { error: error.message }
 
-    // Recalculate streaks for all non-no_class records
-    await Promise.all(
-        records
-            .filter(r => r.status !== 'no_class')
-            .map(r => recalculateStreak(supabase, r.studentId, date, r.status))
-    )
+    // Recalculate streaks for all affected students
+    const uniqueStudentIds = [...new Set(records.map(r => r.studentId))]
+    await Promise.all(uniqueStudentIds.map(id => recalculateStreak(supabase, id)))
 
-    // ── Attendance XP ──────────────────────────────────────────────────────────
+    // ── XP Revocation for Absentees ─────────────────────────────────────────────
+    const nonPresentIds = records.filter(r => r.status !== 'present').map(r => r.studentId)
+    if (nonPresentIds.length > 0) {
+        // Find and delete individual attendance XP for these students for this date
+        await supabase
+            .from('xp_logs')
+            .delete()
+            .in('user_id', nonPresentIds)
+            .eq('session_id', `attendance-${date}`)
+            .eq('category', 'attendance')
+
+        // Revoke team XP if applicable
+        const { data: nonPresentProfiles } = await supabase
+            .from('users')
+            .select('team_id')
+            .in('id', nonPresentIds)
+            .not('team_id', 'is', null)
+
+        if (nonPresentProfiles && nonPresentProfiles.length > 0) {
+            const teamIdsToRevoke = [...new Set(nonPresentProfiles.map(p => p.team_id))]
+            if (teamIdsToRevoke.length > 0) {
+                await supabase
+                    .from('xp_logs')
+                    .delete()
+                    .in('team_id', teamIdsToRevoke)
+                    .eq('session_id', `attendance-team-${date}`)
+                    .eq('category', 'attendance')
+            }
+        }
+    }
+
+    // ── Attendance XP for Present ─────────────────────────────────────────────
     const presentStudentIds = records.filter(r => r.status === 'present').map(r => r.studentId)
 
     if (presentStudentIds.length > 0) {
@@ -608,6 +624,35 @@ export async function markNoClassDay(date: string, studentIds: string[]) {
         .from('attendance')
         .upsert(rows, { onConflict: 'student_id,date' })
     if (error) return { error: error.message }
+
+    await Promise.all(studentIds.map(id => recalculateStreak(supabase, id)))
+
+    if (studentIds.length > 0) {
+        await supabase
+            .from('xp_logs')
+            .delete()
+            .in('user_id', studentIds)
+            .eq('session_id', `attendance-${date}`)
+            .eq('category', 'attendance')
+
+        const { data: nonPresentProfiles } = await supabase
+            .from('users')
+            .select('team_id')
+            .in('id', studentIds)
+            .not('team_id', 'is', null)
+
+        if (nonPresentProfiles && nonPresentProfiles.length > 0) {
+            const teamIdsToRevoke = [...new Set(nonPresentProfiles.map(p => p.team_id))]
+            if (teamIdsToRevoke.length > 0) {
+                await supabase
+                    .from('xp_logs')
+                    .delete()
+                    .in('team_id', teamIdsToRevoke)
+                    .eq('session_id', `attendance-team-${date}`)
+                    .eq('category', 'attendance')
+            }
+        }
+    }
 
     revalidatePath('/admin/attendance')
     return { success: true }

@@ -111,6 +111,7 @@ export interface UserBadge {
 }
 
 export interface Level {
+    id?: string
     level: number
     title: string
     minImpact: number
@@ -127,23 +128,23 @@ export const LEVELS: Level[] = [
     { level: 5, title: 'Lab Legend', minImpact: 900, maxImpact: null },
 ]
 
-export function getUserLevel(impact: number): Level {
-    for (let i = LEVELS.length - 1; i >= 0; i--) {
-        if (impact >= LEVELS[i].minImpact) return LEVELS[i]
+export function getUserLevel(impact: number, levels: Level[] = LEVELS): Level {
+    for (let i = levels.length - 1; i >= 0; i--) {
+        if (impact >= levels[i].minImpact) return levels[i]
     }
-    return LEVELS[0]
+    return levels[0]
 }
 
-export function getLevelProgress(impact: number): number {
-    const level = getUserLevel(impact)
+export function getLevelProgress(impact: number, levels: Level[] = LEVELS): number {
+    const level = getUserLevel(impact, levels)
     if (!level.maxImpact) return 100 // Max level
     const range = level.maxImpact - level.minImpact + 1
-    const progress = impact - level.minImpact
+    const progress = Math.max(0, impact - level.minImpact)
     return Math.min(100, Math.round((progress / range) * 100))
 }
 
-export function getNextLevel(impact: number): Level | null {
-    const current = getUserLevel(impact)
-    const next = LEVELS.find(l => l.level === current.level + 1)
+export function getNextLevel(impact: number, levels: Level[] = LEVELS): Level | null {
+    const current = getUserLevel(impact, levels)
+    const next = levels.find(l => l.level === current.level + 1)
     return next || null
 }

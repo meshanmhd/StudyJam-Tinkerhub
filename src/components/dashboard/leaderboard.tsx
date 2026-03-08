@@ -3,7 +3,7 @@
 import { UserScore } from '@/types'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-import { getUserLevel } from '@/types'
+import { getUserLevel, Level } from '@/types'
 
 const getRankDisplay = (rank: number) => {
     if (rank === 1) return { label: '🥇', style: 'text-amber-400 text-lg' }
@@ -18,9 +18,10 @@ interface LeaderboardProps {
     currentUserScore?: UserScore
     viewMode?: 'individual' | 'team'
     limit?: number
+    levels?: Level[]
 }
 
-export function Leaderboard({ students, currentUserId, currentUserScore, viewMode = 'individual', limit }: LeaderboardProps) {
+export function Leaderboard({ students, currentUserId, currentUserScore, viewMode = 'individual', limit, levels }: LeaderboardProps) {
     const isTeamView = viewMode === 'team'
 
     // In team view, deduplicate by team_id and sort by team_xp
@@ -69,7 +70,7 @@ export function Leaderboard({ students, currentUserId, currentUserScore, viewMod
                     const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
                     // For individual view: level is based on impact score (final_score)
-                    const level = !isTeamView ? getUserLevel(student.final_score) : null
+                    const level = !isTeamView ? getUserLevel(student.final_score, levels) : null
                     const { label, style } = getRankDisplay(student.rank)
 
                     return (

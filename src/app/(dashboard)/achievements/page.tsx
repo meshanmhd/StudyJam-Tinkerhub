@@ -3,17 +3,20 @@ import { redirect } from 'next/navigation'
 import { getUserLevel, getLevelProgress } from '@/types'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
+import { getStudyJamLevels } from '@/app/actions'
+
 export default async function AchievementsPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    const [profileRes, scoreRes, badgesRes, submissionsRes, attendanceRes] = await Promise.all([
+    const [profileRes, scoreRes, badgesRes, submissionsRes, attendanceRes, levels] = await Promise.all([
         supabase.from('users').select('*, team:teams(id, team_name, team_xp, weekly_title)').eq('id', user.id).single(),
         supabase.from('user_scores').select('*').eq('user_id', user.id).single(),
         supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', user.id).order('awarded_at', { ascending: false }),
         supabase.from('task_submissions').select('id, status, xp_given, task:tasks(title), approved_at').eq('user_id', user.id).eq('status', 'approved').order('approved_at', { ascending: false }),
         supabase.from('attendance').select('date, status').eq('student_id', user.id).order('date', { ascending: false }).limit(30),
+        getStudyJamLevels()
     ])
 
     const profile = profileRes.data
@@ -24,8 +27,8 @@ export default async function AchievementsPage() {
 
     if (!profile || !score) redirect('/dashboard')
 
-    const level = getUserLevel(score.final_score)
-    const progress = getLevelProgress(score.final_score)
+    const level = getUserLevel(score.final_score, levels)
+    const progress = getLevelProgress(score.final_score, levels)
 
     const initials = profile.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 

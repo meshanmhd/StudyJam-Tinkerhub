@@ -2,17 +2,19 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Leaderboard } from '@/components/dashboard/leaderboard'
 import { RefreshButton } from '@/components/ui/refresh-button'
-import type { UserScore } from '@/types'
+import { getStudyJamLevels } from '@/app/actions'
+import type { UserScore, Level } from '@/types'
 
 export default async function LeaderboardPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    const [scoresRes, teamsRes, profileRes] = await Promise.all([
+    const [scoresRes, teamsRes, profileRes, levels] = await Promise.all([
         supabase.from('user_scores').select('*').order('final_score', { ascending: false }),
         supabase.from('teams').select('*').order('team_xp', { ascending: false }),
         supabase.from('users').select('team_id').eq('id', user.id).single(),
+        getStudyJamLevels()
     ])
 
     const scoresResData: UserScore[] = scoresRes.data || []
@@ -42,6 +44,7 @@ export default async function LeaderboardPage() {
                             students={scores}
                             currentUserId={user.id}
                             currentUserScore={currentUserScore}
+                            levels={levels}
                         />
                     </div>
                 </div>
@@ -57,6 +60,7 @@ export default async function LeaderboardPage() {
                             currentUserId={user.id}
                             currentUserScore={currentUserScore}
                             viewMode="team"
+                            levels={levels}
                         />
                     </div>
                 </div>

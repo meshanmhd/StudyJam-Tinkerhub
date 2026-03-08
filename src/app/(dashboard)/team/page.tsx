@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import { getStudyJamLevels } from '@/app/actions'
 import { getUserLevel } from '@/types'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { StatCard } from '@/components/dashboard/stat-card'
@@ -26,13 +27,14 @@ export default async function TeamPage() {
         )
     }
 
-    const [membersRes, xpLogsRes] = await Promise.all([
+    const [membersRes, xpLogsRes, levels] = await Promise.all([
         supabase.from('user_scores').select('*').eq('team_id', profile.team_id),
         supabase.from('xp_logs')
             .select('*')
             .eq('team_id', profile.team_id)
             .order('created_at', { ascending: false })
             .limit(10),
+        getStudyJamLevels()
     ])
 
     const members = membersRes.data || []
@@ -95,7 +97,7 @@ export default async function TeamPage() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {members.map(member => {
-                        const level = getUserLevel(member.final_score)
+                        const level = getUserLevel(member.final_score, levels)
                         const initials = member.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
                         const isMe = member.user_id === user.id
                         return (

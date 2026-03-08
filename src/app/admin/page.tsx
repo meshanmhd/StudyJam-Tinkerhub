@@ -3,7 +3,8 @@ import { StatCard } from '@/components/dashboard/stat-card'
 import { Leaderboard } from '@/components/dashboard/leaderboard'
 import { Users, ClipboardList } from 'lucide-react'
 import Link from 'next/link'
-import type { UserScore } from '@/types'
+import { getStudyJamLevels } from '@/app/actions'
+import type { UserScore, Level } from '@/types'
 
 type PendingSub = {
     id: string
@@ -15,12 +16,13 @@ type PendingSub = {
 export default async function AdminOverviewPage() {
     const supabase = await createClient()
 
-    const [usersRes, teamsRes, pendingRes, tasksRes, scoresRes] = await Promise.all([
+    const [usersRes, teamsRes, pendingRes, tasksRes, scoresRes, levels] = await Promise.all([
         supabase.from('users').select('id, individual_xp').eq('role', 'student'),
         supabase.from('teams').select('*').order('team_xp', { ascending: false }),
         supabase.from('task_submissions').select('id, task_id, user:users!task_submissions_user_id_fkey(name), task:tasks!task_submissions_task_id_fkey(title)').eq('status', 'pending').order('submitted_at', { ascending: true }),
         supabase.from('tasks').select('id').gte('deadline', new Date().toISOString()),
         supabase.from('user_scores').select('*').order('final_score', { ascending: false }),
+        getStudyJamLevels()
     ])
 
     const users = usersRes.data || []
@@ -100,6 +102,7 @@ export default async function AdminOverviewPage() {
                                 students={scores}
                                 currentUserId=""
                                 limit={5}
+                                levels={levels}
                             />
                             {scores.length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-6">No students yet.</p>
@@ -121,6 +124,7 @@ export default async function AdminOverviewPage() {
                                 currentUserId=""
                                 viewMode="team"
                                 limit={5}
+                                levels={levels}
                             />
                             {teams.length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-6">No teams created yet.</p>
