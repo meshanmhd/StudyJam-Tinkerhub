@@ -13,7 +13,6 @@ export async function login(formData: FormData) {
         return { error: error.message }
     }
 
-    // Get user profile to determine role-based redirect
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Authentication failed' }
 
@@ -42,14 +41,11 @@ export async function register(formData: FormData) {
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
-    // 1. Sign up user in Supabase auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-            data: {
-                full_name: name,
-            }
+            data: { full_name: name }
         }
     })
 
@@ -61,8 +57,6 @@ export async function register(formData: FormData) {
         return { error: 'Failed to create user account' }
     }
 
-    // 2. Upsert into public.users table (upsert handles the case where a
-    //    database trigger may have already created a row with an email-derived name)
     const { error: dbError } = await supabase
         .from('users')
         .upsert({
@@ -77,6 +71,34 @@ export async function register(formData: FormData) {
         return { error: 'Failed to complete registration profile' }
     }
 
-    // With email confirmation disabled, the user is already logged in after signUp
     return { success: true, redirectTo: '/dashboard' }
+}
+
+export async function forgotPassword(formData: FormData) {
+    const supabase = await createClient()
+    const email = formData.get('email') as string
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+export async function resetPassword(formData: FormData) {
+    const supabase = await createClient()
+    const password = formData.get('password') as string
+
+    const { error } = await supabase.auth.updateUser({ password })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true }
 }

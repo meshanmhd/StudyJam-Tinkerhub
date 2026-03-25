@@ -12,7 +12,7 @@ export default async function TasksPage() {
     if (!user) redirect('/login')
 
     const [tasksRes, submissionsRes] = await Promise.all([
-        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*').order('created_at', { ascending: true }),
         supabase
             .from('task_submissions')
             .select('*, task:tasks(title, xp_reward, task_type)')

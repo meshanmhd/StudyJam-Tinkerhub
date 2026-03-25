@@ -45,26 +45,38 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
         setLoading(true)
         const supabase = createClient()
 
-        let query;
-        if (currentSub?.id) {
-            query = supabase.from('task_submissions').update({
-                content: currentSub.content || '',
-                status: 'pending',
-                submitted_at: new Date().toISOString()
-            }).eq('id', currentSub.id).select().single()
-        } else {
-            query = supabase.from('task_submissions').insert({ task_id: task.id, user_id: userId, content: '', status: 'pending' }).select().single()
-        }
-
-        const { data, error } = await query
+        // Use upsert so that even if the user submits from a stale session on
+        // another device, it merges into the existing row instead of creating
+        // a duplicate. The DB unique constraint on (task_id, user_id) is the
+        // true guard; upsert makes the failure graceful on the client side.
+        const isResubmission = !!currentSub?.id
+        const { data, error } = await supabase
+            .from('task_submissions')
+            .upsert(
+                {
+                    ...(currentSub?.id ? { id: currentSub.id } : {}),
+                    task_id: task.id,
+                    user_id: userId,
+                    content: currentSub?.content || '',
+                    status: 'pending',
+                    submitted_at: new Date().toISOString(),
+                },
+                { onConflict: 'task_id,user_id' }
+            )
+            .select()
+            .single()
 
         if (error) {
             console.error('Submission error:', error)
-            toast.error(`Failed to submit task: ${error.message}`)
+            if (error.message?.includes('row-level security') || error.message?.includes('duplicate')) {
+                toast.error('Task already submitted. Please refresh the page to see changes.')
+            } else {
+                toast.error(`Failed to submit: ${error.message}`)
+            }
         } else {
             const returnedData = Array.isArray(data) ? data[0] : data
             setCurrentSub(returnedData as TaskSubmission)
-            toast.success(currentSub?.id ? 'Task resubmitted!' : 'Task submitted! Awaiting admin approval.')
+            toast.success(isResubmission ? 'Task resubmitted!' : 'Task submitted! Awaiting admin approval.')
             setOpen(false)
         }
         setLoading(false)
@@ -162,17 +174,9 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
                             <span className="capitalize">{currentSub.status}</span>
                         </div>
                     ) : (
-                        <Button
-                            size="sm"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                markComplete()
-                            }}
-                            disabled={loading || overdue}
-                            className={`h-7 px-3 text-xs border ${overdue ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed' : 'bg-primary/20 hover:bg-primary/30 text-primary border-primary/20'}`}
-                        >
-                            {loading ? <Loader2 size={12} className="animate-spin" /> : 'Submit'}
-                        </Button>
+                        <div className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border bg-zinc-500/10 text-zinc-400 border-zinc-500/20">
+                            <span>To Do</span>
+                        </div>
                     )}
                 </div>
             </div>
@@ -235,9 +239,9 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
                     )}
 
                     {!currentSub && !overdue && (
-                        <div className="space-y-2 mt-2">
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mt-2">
                             <p className="text-sm text-foreground/90 font-medium">Ready to submit your task?</p>
-                            <p className="text-xs text-muted-foreground">Make sure you have completed the requirements off-platform in person before submitting.</p>
+                            <p className="text-xs text-muted-foreground mt-1">Make sure you have completed the requirements off-platform in person before submitting.</p>
                         </div>
                     )}
 
@@ -273,7 +277,7 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
                             className={`bg-white hover:bg-white/80 text-black font-medium transition-colors ${loading ? 'opacity-80' : ''}`}
                         >
                             {loading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-                            {currentSub?.status === 'rejected' ? 'Resubmit Task' : 'Submit Task'}
+                            {currentSub?.status === 'rejected' ? 'Resubmit Task' : 'Submit for Review'}
                         </Button>
                     )}
                 </DialogFooter>
