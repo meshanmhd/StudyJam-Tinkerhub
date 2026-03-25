@@ -78,6 +78,17 @@ export async function forgotPassword(formData: FormData) {
     const supabase = await createClient()
     const email = formData.get('email') as string
 
+    // Check the email exists in our users table before sending a reset link
+    const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+
+    if (!existingUser) {
+        return { error: 'No account found with this email address.' }
+    }
+
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
