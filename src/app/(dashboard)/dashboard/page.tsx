@@ -18,7 +18,7 @@ export default async function DashboardPage() {
     const [profileRes, scoresRes, tasksRes, submissionsRes, badgesRes, levels] = await Promise.all([
         supabase.from('users').select('*, team:teams(*)').eq('id', user.id).single(),
         supabase.from('user_scores').select('*').order('final_score', { ascending: false }),
-        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*').order('created_at', { ascending: true }),
         supabase.from('task_submissions').select('*').eq('user_id', user.id),
         supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', user.id),
         getStudyJamLevels()

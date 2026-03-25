@@ -44,7 +44,9 @@ export async function updateSession(request: NextRequest) {
         !user &&
         !isAuthCallback &&
         !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/register')
+        !request.nextUrl.pathname.startsWith('/register') &&
+        !request.nextUrl.pathname.startsWith('/forgot-password') &&
+        !request.nextUrl.pathname.startsWith('/reset-password')
     ) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
