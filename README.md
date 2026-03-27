@@ -1,6 +1,6 @@
 <br/>
 <div align="center">
-  <img alt="StudyJam Icon" width="100" src="./public/favicon.ico" />
+  <img alt="StudyJam Icon" width="100" src="http://www.w3.org/2000/svg" />
   <h1 align="center">StudyJam Management Platform</h1>
   <p align="center">
     <strong>A high-performance, gamified platform for managing students, tasks, and attendance.</strong>
@@ -46,7 +46,7 @@ Ensure you have the following installed on your local development machine:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/studyjam-app.git
+git clone https://github.com/meshanmhd/StudyJam-Tinkerhub.git
 cd studyjam-app
 ```
 
