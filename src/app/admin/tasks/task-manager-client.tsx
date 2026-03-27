@@ -2,21 +2,17 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createTask } from '../actions'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
-import { Plus, Loader2, Clock, Hash, Users, User, Search, Filter } from 'lucide-react'
+import { Plus, Loader2, Clock, Users, User, Search } from 'lucide-react'
 import { DateTimePicker } from '@/components/ui/datetime-picker'
 
 interface Task {
@@ -42,6 +38,7 @@ export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
     const [localTasks, setLocalTasks] = useState(tasks)
     const [desc, setDesc] = useState('')
     const [taskType, setTaskType] = useState<'individual' | 'team'>('individual')
+    const [level, setLevel] = useState('Beginner')
     const [searchQuery, setSearchQuery] = useState('')
     const [filterBy, setFilterBy] = useState('All')
 
@@ -61,26 +58,34 @@ export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
             setShowForm(false)
             setDesc('')
             setTaskType('individual')
+            setLevel('Beginner')
             router.refresh()
         }
         setCreating(false)
     }
 
-    const filteredTasks = localTasks
+    const activeTasks = localTasks
         .filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()))
         .filter(t => {
-            if (filterBy === 'All') return true
             const isPast = t.deadline && new Date(t.deadline) <= now
             if (filterBy === 'Active') return !isPast
-            if (filterBy === 'Ended') return isPast
-            if (filterBy === 'Pending Review') {
-                return (t.submissions?.filter(s => s.status === 'pending').length || 0) > 0
-            }
-            return true
+            if (filterBy === 'Ended') return false
+            if (filterBy === 'Pending Review') return (t.submissions?.filter(s => s.status === 'pending').length || 0) > 0
+            // All — split into active/ended below
+            return !isPast
         })
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    const inputCls = "w-full px-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+    const endedTasks = localTasks
+        .filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .filter(t => {
+            const isPast = t.deadline && new Date(t.deadline) <= now
+            if (filterBy === 'Active') return false
+            if (filterBy === 'Ended') return isPast
+            if (filterBy === 'Pending Review') return false
+            return !!isPast
+        })
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
     return (
         <div className="space-y-10">
@@ -94,52 +99,68 @@ export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
 
             {/* Create task dialog */}
             <Dialog open={showForm} onOpenChange={setShowForm}>
-                <DialogContent className="sm:max-w-[450px] max-h-[85vh] overflow-y-auto custom-scrollbar">
-                    <DialogHeader>
-                        <DialogTitle>Create New Task</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateTask} className="space-y-4 pt-4">
-                        {/* Title */}
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Title</Label>
-                            <input id="title" name="title" required placeholder="Build a REST API…" className={inputCls} />
-                        </div>
+                <DialogContent className="sm:max-w-[480px] p-0 gap-0 bg-[#0A0A0A] border border-[#1F1F1F] rounded-2xl overflow-hidden">
 
-                        {/* Description */}
+                    {/* Modal Header */}
+                    <div className="px-5 pt-5 pb-3 border-b border-[#1A1A1A]">
+                        <DialogTitle className="text-base font-semibold text-white">Create New Task</DialogTitle>
+                        <p className="text-xs text-zinc-500 mt-0.5">Fill in the details to publish a new task for students.</p>
+                    </div>
+
+                    <form onSubmit={handleCreateTask} className="px-5 py-4 space-y-3.5">
+
+                        {/* ── Task Title ── */}
                         <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</Label>
-                            </div>
-                            <textarea
-                                id="description" name="description" rows={3}
-                                value={desc} onChange={e => setDesc(e.target.value)}
-                                placeholder="Describe what students need to do…"
-                                className="w-full px-4 py-3 bg-muted/20 border border-border/60 ring-1 ring-border/20 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Task Title</label>
+                            <input
+                                id="title" name="title" required
+                                placeholder="e.g. Build a REST API with Node.js"
+                                className="w-full h-11 px-4 rounded-lg bg-[#111] border border-[#222] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all"
                             />
                         </div>
 
-                        {/* Task Type & Level */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Task Type</Label>
-                                <Tabs value={taskType} onValueChange={(val) => setTaskType(val as 'individual' | 'team')} className="w-full h-11">
-                                    <TabsList className="w-full h-full bg-muted/20 border border-border/40 p-1 rounded-xl">
-                                        <TabsTrigger value="individual" className="flex-1 rounded-lg text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary transition-all">
-                                            <User size={14} className="mr-1.5" /> Individual
-                                        </TabsTrigger>
-                                        <TabsTrigger value="team" className="flex-1 rounded-lg text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary transition-all">
-                                            <Users size={14} className="mr-1.5" /> Team
-                                        </TabsTrigger>
-                                    </TabsList>
-                                </Tabs>
+                        {/* ── Description ── */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Description</label>
+                            <textarea
+                                id="description" name="description" rows={4}
+                                value={desc} onChange={e => setDesc(e.target.value)}
+                                placeholder="What should students complete for this task?"
+                                className="w-full px-4 py-3 rounded-lg bg-[#111] border border-[#222] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all resize-none"
+                            />
+                        </div>
+
+                        {/* ── Task Type ── */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Task Type</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['individual', 'team'] as const).map((type) => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => setTaskType(type)}
+                                        className={`flex items-center justify-center gap-2 h-11 rounded-lg border text-sm font-medium transition-all ${taskType === type
+                                            ? 'bg-white text-black border-white'
+                                            : 'bg-[#111] text-zinc-400 border-[#222] hover:border-zinc-600 hover:text-zinc-200'
+                                            }`}
+                                    >
+                                        {type === 'individual' ? <User size={14} /> : <Users size={14} />}
+                                        {type === 'individual' ? 'Individual' : 'Team'}
+                                    </button>
+                                ))}
                             </div>
+                        </div>
+
+                        {/* ── Level & XP row ── */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Difficulty */}
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Difficulty Level</Label>
-                                <Select name="level" defaultValue="">
-                                    <SelectTrigger className={`${inputCls} bg-black text-white hover:bg-muted/10 transition-colors`}>
-                                        <SelectValue placeholder="Select level..." />
+                                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Difficulty</label>
+                                <Select name="level" value={level} onValueChange={setLevel}>
+                                    <SelectTrigger className="w-full !h-11 px-4 bg-[#111] border border-[#222] text-sm text-white focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all rounded-lg">
+                                        <SelectValue placeholder="Select level" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-black border-border/40 text-white rounded-xl shadow-2xl">
+                                    <SelectContent className="bg-[#0A0A0A] border-[#1F1F1F] text-white rounded-xl shadow-2xl">
                                         <SelectItem value="Beginner" className="focus:bg-white/10 focus:text-white rounded-lg cursor-pointer">Beginner</SelectItem>
                                         <SelectItem value="Intermediate" className="focus:bg-white/10 focus:text-white rounded-lg cursor-pointer">Intermediate</SelectItem>
                                         <SelectItem value="Advanced" className="focus:bg-white/10 focus:text-white rounded-lg cursor-pointer">Advanced</SelectItem>
@@ -147,122 +168,188 @@ export function TaskManagerClient({ tasks }: TaskManagerClientProps) {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
 
-
-                        {/* XP Reward */}
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">XP Reward</Label>
-                            <div className="relative">
-                                <Hash size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400" />
-                                <input id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="eg:25"
-                                    className="w-full pl-9 pr-4 py-2.5 h-11 bg-muted/20 border border-border/60 ring-2 ring-border/20 rounded-xl text-sm focus:outline-none" />
+                            {/* XP Reward */}
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">XP Reward</label>
+                                <input
+                                    id="xp_reward" name="xp_reward" type="number" required min={1} placeholder="25"
+                                    className="w-full h-11 px-4 rounded-lg bg-[#111] border border-[#222] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all"
+                                />
                             </div>
                         </div>
 
-                        {/* Deadline */}
-                        <div className="space-y-1.5 pt-1">
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Deadline</Label>
-                            <DateTimePicker name="deadline" id="deadline" />
+                        {/* ── Deadline ── */}
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Deadline</label>
+                            <DateTimePicker name="deadline" id="deadline" required />
                         </div>
 
-                        <DialogFooter className="pt-4 mt-2">
-                            <Button variant="ghost" type="button" onClick={() => setShowForm(false)} className="rounded-xl px-5">Cancel</Button>
-                            <Button type="submit" disabled={creating} className="bg-white text-black hover:bg-gray-200 rounded-xl px-5 transition-colors">
-                                {creating ? <><Loader2 size={14} className="animate-spin mr-1.5" />Creating…</> : <>Create Task</>}
-                            </Button>
-                        </DialogFooter>
+                        {/* ── Footer actions ── */}
+                        <div className="flex items-center gap-3 pt-1 border-t border-[#1A1A1A] mt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowForm(false)}
+                                className="flex-1 h-10 rounded-lg border border-[#222] text-sm text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={creating}
+                                className="flex-1 h-10 rounded-lg bg-white text-black text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                            >
+                                {creating ? <><Loader2 size={14} className="animate-spin" />Creating…</> : 'Create Task'}
+                            </button>
+                        </div>
                     </form>
                 </DialogContent>
             </Dialog>
 
+
             {/* Task List Main Area */}
             <main className="bg-[#0A0A0A] border border-[#1F1F1F] rounded-xl overflow-hidden">
-                <div className="p-6 border-b border-[#1F1F1F] flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
-                        <div className="relative w-full sm:w-64 lg:w-72">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
-                            <input
-                                className="w-full pl-10 pr-4 py-2.5 text-sm bg-black border border-[#1F1F1F] rounded-lg focus:outline-none focus:ring-1 focus:ring-white focus:border-white/1 placeholder:text-zinc-500 text-white"
-                                placeholder="Search tasks..."
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex gap-3 w-full sm:w-auto relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4 z-10 pointer-events-none" />
-                            <Select value={filterBy} onValueChange={setFilterBy}>
-                                <SelectTrigger className="w-full sm:w-40 text-sm bg-black border border-[#1F1F1F] rounded-lg h-[41.5px] pl-10 pr-4 focus:ring-1 focus:ring-white text-white hover:bg-white/[0.02] transition-colors focus:border-[#1F1F1F] ring-offset-black">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-black border-[#1F1F1F] text-white rounded-lg shadow-2xl">
-                                    <SelectItem value="All" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">All Tasks</SelectItem>
-                                    <SelectItem value="Active" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">Active</SelectItem>
-                                    <SelectItem value="Pending Review" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">Pending Review</SelectItem>
-                                    <SelectItem value="Ended" className="focus:bg-white/[0.08] focus:text-white cursor-pointer rounded-md">Ended</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                {/* Toolbar */}
+                <div className="px-4 py-3 border-b border-[#1F1F1F] flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    {/* Search */}
+                    <div className="relative flex-1 min-w-0">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" />
+                        <input
+                            className="w-full pl-10 pr-4 py-2 text-sm bg-black border border-[#1F1F1F] rounded-lg focus:outline-none focus:ring-1 focus:ring-white placeholder:text-zinc-600 text-white"
+                            placeholder="Search tasks..."
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
+                    {/* Filter tab pills */}
+                    <div className="flex items-center gap-1 bg-[#111] border border-[#1F1F1F] rounded-lg p-1 shrink-0 overflow-x-auto">
+                        {(['All', 'Active', 'Ended', 'Pending Review'] as const).map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setFilterBy(tab)}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${filterBy === tab
+                                    ? 'bg-white text-black shadow-sm'
+                                    : 'text-zinc-500 hover:text-zinc-300'
+                                    }`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+                    {/* New task button */}
                     <button
                         onClick={() => setShowForm(true)}
-                        className="bg-white text-black px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center space-x-2 hover:bg-gray-200 transition-colors whitespace-nowrap w-full md:w-auto"
+                        className="bg-white text-black px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-200 transition-colors whitespace-nowrap shrink-0"
                     >
-                        <Plus size={16} className="font-semibold" />
-                        <span>NEW TASK</span>
+                        <Plus size={14} />
+                        <span>New Task</span>
                     </button>
                 </div>
 
                 <div className="divide-y divide-[#1F1F1F]">
-                    <div className="px-6 py-4 bg-white/[0.02] text-[11px] font-bold tracking-[0.1em] text-zinc-500 uppercase border-b border-[#1F1F1F]">
-                        All Tasks ({localTasks.length})
-                    </div>
-
-                    {filteredTasks.map(task => {
-                        const isPast = task.deadline && new Date(task.deadline) <= now
-                        const pendingCount = task.submissions?.filter(s => s.status === 'pending').length || 0
-
-                        return (
-                            <div
-                                key={task.id}
-                                onClick={() => router.push(`/admin/tasks/${task.id}`)}
-                                className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer group flex items-center justify-between gap-4"
-                            >
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <h3 className={`text-sm font-semibold transition-colors truncate ${isPast ? 'text-white/50' : 'text-white group-hover:text-primary'}`}>
-                                            {task.title}
-                                        </h3>
-                                        {task.task_type === 'individual' ? (
-                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border text-blue-400 border-blue-400/30 shrink-0">Indiv</span>
-                                        ) : (
-                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border text-purple-400 border-purple-400/30 shrink-0">Team</span>
-                                        )}
-                                        {pendingCount > 0 && (
-                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold border text-amber-400 border-amber-400/30 flex items-center gap-1 shrink-0">
-                                                <span className="w-1 h-1 rounded-full bg-amber-400"></span>
-                                                {pendingCount} pending
-                                            </span>
-                                        )}
-                                    </div>
-                                    {task.description && (
-                                        <p className={`text-xs line-clamp-1 mt-0.5 ${isPast ? 'text-zinc-600' : 'text-zinc-500'}`}>{task.description}</p>
-                                    )}
-                                </div>
-                                <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
-                                    <span className={`text-xs font-bold ${isPast ? 'text-white/40' : 'text-amber-400'}`}>+{task.xp_reward} XP</span>
-                                    {task.deadline && (
-                                        <span className="text-[10px] text-zinc-600 flex items-center gap-1">
-                                            <Clock size={9} />{isPast ? 'Ended' : 'Due'}: {formatDate(task.deadline)}
-                                        </span>
-                                    )}
-                                </div>
+                    {/* ── Active Tasks ── */}
+                    {activeTasks.length > 0 && (
+                        <>
+                            <div className="px-6 py-3 bg-white/[0.02] text-[11px] font-bold tracking-[0.1em] text-zinc-500 uppercase border-b border-[#1F1F1F] flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+                                Active ({activeTasks.length})
                             </div>
-                        )
-                    })}
+                            {activeTasks.map(task => {
+                                const pendingCount = task.submissions?.filter(s => s.status === 'pending').length || 0
+                                return (
+                                    <div
+                                        key={task.id}
+                                        onClick={() => router.push(`/admin/tasks/${task.id}`)}
+                                        className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer group flex items-center justify-between gap-4"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="text-sm font-semibold transition-colors truncate text-white group-hover:text-primary">
+                                                    {task.title}
+                                                </h3>
+                                                {task.task_type === 'individual' ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0"><User size={9} />Solo</span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-500/10 text-violet-400 border border-violet-500/20 shrink-0"><Users size={9} />Team</span>
+                                                )}
+                                                {pendingCount > 0 && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                                        {pendingCount} review
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {task.description && (
+                                                <p className="text-xs line-clamp-1 mt-0.5 text-zinc-500">{task.description}</p>
+                                            )}
+                                        </div>
+                                        <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
+                                            <span className="text-xs font-bold text-amber-400">+{task.xp_reward} XP</span>
+                                            {task.deadline && (
+                                                <span className="text-[10px] text-zinc-600 flex items-center gap-1">
+                                                    <Clock size={9} />Due: {formatDate(task.deadline)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </>
+                    )}
 
-                    {filteredTasks.length === 0 && (
+                    {/* ── Ended Tasks ── */}
+                    {endedTasks.length > 0 && (
+                        <>
+                            <div className="px-6 py-3 bg-white/[0.02] text-[11px] font-bold tracking-[0.1em] text-zinc-600 uppercase border-b border-[#1F1F1F] flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 inline-block" />
+                                Ended ({endedTasks.length})
+                            </div>
+                            {endedTasks.map(task => {
+                                const pendingCount = task.submissions?.filter(s => s.status === 'pending').length || 0
+                                return (
+                                    <div
+                                        key={task.id}
+                                        onClick={() => router.push(`/admin/tasks/${task.id}`)}
+                                        className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer group flex items-center justify-between gap-4 opacity-60"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="text-sm font-semibold transition-colors truncate text-white/50 group-hover:text-white/70">
+                                                    {task.title}
+                                                </h3>
+                                                {task.task_type === 'individual' ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/5 text-blue-400/40 border border-blue-500/10 shrink-0"><User size={9} />Solo</span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-500/5 text-violet-400/40 border border-violet-500/10 shrink-0"><Users size={9} />Team</span>
+                                                )}
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 text-zinc-500 border border-zinc-700 shrink-0">Ended</span>
+                                                {pendingCount > 0 && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 opacity-100">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                                        {pendingCount} review
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {task.description && (
+                                                <p className="text-xs line-clamp-1 mt-0.5 text-zinc-600">{task.description}</p>
+                                            )}
+                                        </div>
+                                        <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
+                                            <span className="text-xs font-bold text-white/30">+{task.xp_reward} XP</span>
+                                            {task.deadline && (
+                                                <span className="text-[10px] text-zinc-700 flex items-center gap-1">
+                                                    <Clock size={9} />Ended: {formatDate(task.deadline)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </>
+                    )}
+
+                    {activeTasks.length === 0 && endedTasks.length === 0 && (
                         <div className="p-8 text-center text-zinc-500">
                             No tasks found matching your criteria.
                         </div>
