@@ -66,8 +66,8 @@ export function XpManagerClient({ students, teams, logs: initialLogs }: XpManage
             <div className="bg-[#0A0A0A] rounded-2xl border border-[#1F1F1F] overflow-hidden h-fit">
                 {/* Form header */}
                 <div className="px-6 py-4 border-b border-[#1F1F1F] flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
-                        <Zap size={15} className="text-amber-400" />
+                    <div className="w-10 h-10 rounded-lg bg-[#111] border border-[#222] flex items-center justify-center">
+                        <Zap size={15} className="text-white" />
                     </div>
                     <div>
                         <h2 className="text-sm font-semibold text-white">Award XP</h2>
@@ -77,13 +77,13 @@ export function XpManagerClient({ students, teams, logs: initialLogs }: XpManage
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     {/* Mode toggle */}
-                    <div className="flex gap-2 p-1 bg-white/[0.02] rounded-xl border border-[#1F1F1F]">
+                    <div className="grid grid-cols-2 gap-2">
                         {(['individual', 'team'] as const).map(m => (
                             <button type="button" key={m}
                                 onClick={() => { setMode(m); setTargetId('') }}
-                                className={`flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-all ${mode === m
-                                    ? 'bg-black text-white shadow-sm border border-[#1F1F1F]'
-                                    : 'text-zinc-500 hover:text-white'
+                                className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-lg border text-sm font-medium transition-all ${mode === m
+                                    ? 'bg-white text-black border-white'
+                                    : 'bg-[#111] text-zinc-400 border-[#222] hover:border-zinc-600 hover:text-zinc-200'
                                     }`}
                             >
                                 {m === 'individual' ? 'Individual' : 'Team'}
@@ -93,21 +93,21 @@ export function XpManagerClient({ students, teams, logs: initialLogs }: XpManage
 
                     {/* Target */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                        <Label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">
                             {mode === 'individual' ? 'Student' : 'Team'}
                         </Label>
                         <Select value={targetId} onValueChange={setTargetId} required>
-                            <SelectTrigger className="w-full bg-black border-[#1F1F1F] ring-1 ring-[#1F1F1F] text-white focus:border-amber-500/50 focus:ring-amber-500/20 h-10">
+                            <SelectTrigger className="w-full !h-11 px-4 bg-[#111] border border-[#222] text-sm text-white focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all rounded-lg">
                                 <SelectValue placeholder={`Select ${mode}…`} />
                             </SelectTrigger>
-                            <SelectContent position="popper" className="bg-[#0A0A0A] border-[#1F1F1F] text-white">
+                            <SelectContent position="popper" className="bg-[#0A0A0A] border-[#1F1F1F] text-white rounded-xl shadow-2xl">
                                 <div className="p-2 sticky top-0 bg-[#0A0A0A] z-10 border-b border-[#1F1F1F]">
                                     <Input
                                         placeholder={`Search ${mode}...`}
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
                                         onKeyDown={e => e.stopPropagation()}
-                                        className="h-8 text-sm bg-black border-[#1F1F1F] text-white"
+                                        className="h-10 px-4 text-sm bg-[#111] border border-[#222] rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all w-full"
                                     />
                                 </div>
                                 {mode === 'individual'
@@ -130,47 +130,39 @@ export function XpManagerClient({ students, teams, logs: initialLogs }: XpManage
 
                     {/* XP amount */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">XP Amount <span className="text-zinc-600 normal-case">(use negative to deduct)</span></Label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400">
-                                <Zap size={13} />
-                            </span>
-                            <input
-                                value={xp}
-                                onChange={e => setXp(e.target.value)}
-                                type="number"
-                                required
-                                placeholder="50"
-                                className="w-full pl-8 pr-3 py-2 h-10 bg-black border border-[#1F1F1F] ring-1 ring-[#1F1F1F] text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all placeholder:text-zinc-600"
-                            />
-                        </div>
+                        <Label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">XP Amount <span className="text-zinc-600 normal-case">(use negative to deduct)</span></Label>
+                        <input
+                            value={xp}
+                            onChange={e => setXp(e.target.value)}
+                            type="number"
+                            required
+                            placeholder="50"
+                            className="w-full px-4 h-11 rounded-lg bg-[#111] border border-[#222] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all"
+                        />
                     </div>
 
                     {/* Reason */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                        <Label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">
                             Reason / Title
                         </Label>
-                        <div className="relative">
-                            <MessageSquare size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                            <input
-                                value={reason}
-                                onChange={e => setReason(e.target.value)}
-                                required
-                                placeholder="e.g. Won the code challenge…"
-                                className="w-full pl-8 pr-3 py-2 h-10 bg-black border border-[#1F1F1F] ring-1 ring-[#1F1F1F] text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all placeholder:text-zinc-600"
-                            />
-                        </div>
+                        <input
+                            value={reason}
+                            onChange={e => setReason(e.target.value)}
+                            required
+                            placeholder="e.g. Won the code challenge…"
+                            className="w-full px-4 h-11 rounded-lg bg-[#111] border border-[#222] text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/20 transition-all"
+                        />
                     </div>
 
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-semibold h-10"
+                        className="w-full h-11 rounded-lg bg-white text-black text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                     >
                         {loading
-                            ? <><Loader2 size={14} className="animate-spin mr-2" />Awarding…</>
-                            : <><Zap size={14} className="mr-2" />Award XP</>
+                            ? <><Loader2 size={14} className="animate-spin" />Awarding…</>
+                            : <><Zap size={14} />Award XP</>
                         }
                     </Button>
                 </form>

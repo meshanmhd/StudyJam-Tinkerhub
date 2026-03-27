@@ -3,7 +3,7 @@
 import { Task, TaskSubmission } from '@/types'
 import { Button } from '@/components/ui/button'
 import { formatDate, timeAgo } from '@/lib/utils'
-import { ClockIcon, CheckCircle, XCircle, Loader2, AlertCircle, Zap } from 'lucide-react'
+import { ClockIcon, CheckCircle, XCircle, AlertCircle, Zap, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
@@ -23,12 +23,6 @@ interface TaskCardProps {
     variant?: 'default' | 'compact'
 }
 
-const LEVEL_COLORS: Record<string, string> = {
-    Beginner: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    Intermediate: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    Advanced: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    Expert: 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-}
 
 const STATUS_STYLES = {
     pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -87,14 +81,14 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
     const borderAccent = status === 'approved' ? 'border-l-emerald-500' : status === 'rejected' ? 'border-l-rose-500' : status === 'pending' ? 'border-l-amber-500' : overdue ? 'border-l-rose-500/50' : 'border-l-zinc-700'
 
     const TriggerContent = variant === 'compact' ? (
-        <div className={`flex items-center gap-4 px-5 py-4 border-l-2 ${borderAccent} hover:bg-white/[0.04] transition-colors cursor-pointer text-left`}>
+        <div className={`flex items-center gap-4 px-5 py-4 border-l-2 ${borderAccent} hover:bg-white/[0.04] active:bg-white/[0.06] transition-colors cursor-pointer select-none`}>
             {/* Status Icon */}
             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${status === 'approved' ? 'bg-emerald-500/15' :
                 status === 'rejected' ? 'bg-rose-500/15' :
                     status === 'pending' ? 'bg-amber-500/15' :
                         overdue ? 'bg-rose-500/10' : 'bg-zinc-800'
                 }`}>
-                {status === 'pending' && <Loader2 size={14} className="text-amber-400 animate-spin" />}
+                {status === 'pending' && <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />}
                 {status === 'approved' && <CheckCircle size={14} className="text-emerald-400" />}
                 {status === 'rejected' && <XCircle size={14} className="text-rose-400" />}
                 {!status && overdue && <AlertCircle size={14} className="text-rose-400/50" />}
@@ -124,10 +118,9 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
                 ) : (
                     <span className={`text-sm font-bold ${overdue && !status ? 'text-zinc-600' : 'text-amber-400/50'}`}>+{task.xp_reward} XP</span>
                 )}
-                {status && (
+                {status && status !== 'pending' && (
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                        status === 'rejected' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
-                            'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        'bg-rose-500/10 text-rose-400 border-rose-500/20'
                         }`}>
                         {status}
                     </span>
@@ -135,47 +128,58 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
             </div>
         </div>
     ) : (
-        <div className="glass rounded-2xl p-5 border border-border/50 ring-1 ring-border/20 shadow-sm hover:border-primary/40 hover:ring-primary/20 cursor-pointer transition-all duration-300">
+        <div className="glass rounded-2xl p-5 border border-border/50 ring-1 ring-border/20 shadow-sm hover:border-primary/40 hover:ring-primary/20 active:scale-[0.995] cursor-pointer transition-all duration-200 select-none">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className="font-semibold text-sm">{task.title}</h3>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${LEVEL_COLORS[task.level || 'Beginner'] || LEVEL_COLORS['Beginner']}`}>
-                            {task.level || 'Beginner'}
-                        </span>
-                        {overdue && (
-                            <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full">
-                                Overdue
+                    {/* Title row with inline status */}
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm leading-snug">{task.title}</h3>
+                            {/* Level pill with colored dot */}
+                            <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${
+                                task.level === 'Beginner' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                task.level === 'Intermediate' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                task.level === 'Advanced' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                    task.level === 'Beginner' ? 'bg-emerald-400' :
+                                    task.level === 'Intermediate' ? 'bg-amber-400' :
+                                    task.level === 'Advanced' ? 'bg-orange-400' :
+                                    'bg-rose-400'
+                                }`} />
+                                {task.level || 'Beginner'}
                             </span>
-                        )}
+                            {overdue && (
+                                <span className="inline-flex items-center gap-1 text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full shrink-0">
+                                    <AlertCircle size={9} /> Overdue
+                                </span>
+                            )}
+                        </div>
+                        {/* Status / XP — right side */}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="text-sm font-bold text-amber-400">+{task.xp_reward} XP</span>
+                            {currentSub ? (
+                                currentSub.status === 'pending' ? (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                                ) : (
+                                    <div className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${STATUS_STYLES[currentSub.status]}`}>
+                                        {currentSub.status === 'approved' && <CheckCircle size={9} />}
+                                        {currentSub.status === 'rejected' && <XCircle size={9} />}
+                                        <span className="capitalize font-medium">{currentSub.status}</span>
+                                    </div>
+                                )
+                            ) : null}
+                        </div>
                     </div>
                     {task.description && (
                         <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{task.description}</p>
                     )}
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        {task.deadline && (
-                            <span className="flex items-center gap-1">
-                                <ClockIcon size={11} />
-                                {formatDate(task.deadline)}
-                            </span>
-                        )}
-                        {currentSub && (
-                            <span className="text-[10px]">Submitted {timeAgo(currentSub.submitted_at)}</span>
-                        )}
-                    </div>
-                </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className="text-sm font-bold text-amber-400">+{task.xp_reward} XP</span>
-                    {currentSub ? (
-                        <div className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border ${STATUS_STYLES[currentSub.status]}`}>
-                            {currentSub.status === 'pending' && <Loader2 size={10} className="animate-spin" />}
-                            {currentSub.status === 'approved' && <CheckCircle size={10} />}
-                            {currentSub.status === 'rejected' && <XCircle size={10} />}
-                            <span className="capitalize">{currentSub.status}</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border bg-zinc-500/10 text-zinc-400 border-zinc-500/20">
-                            <span>To Do</span>
+                    {task.deadline && (
+                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                            <ClockIcon size={11} />
+                            <span>{formatDate(task.deadline)}</span>
+                            {currentSub && <span className="ml-1 text-[10px]">· Submitted {timeAgo(currentSub.submitted_at)}</span>}
                         </div>
                     )}
                 </div>
@@ -197,7 +201,18 @@ export function TaskCard({ task, submission, userId, variant = 'default' }: Task
                     <div>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                             <h3 className="font-semibold text-lg">{task.title}</h3>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${LEVEL_COLORS[task.level || 'Beginner'] || LEVEL_COLORS['Beginner']}`}>
+                            <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${
+                                task.level === 'Beginner' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                task.level === 'Intermediate' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                task.level === 'Advanced' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                    task.level === 'Beginner' ? 'bg-emerald-400' :
+                                    task.level === 'Intermediate' ? 'bg-amber-400' :
+                                    task.level === 'Advanced' ? 'bg-orange-400' :
+                                    'bg-rose-400'
+                                }`} />
                                 {task.level || 'Beginner'}
                             </span>
                         </div>

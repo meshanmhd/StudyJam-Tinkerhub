@@ -38,27 +38,26 @@ export function DateTimePicker({ name, id, defaultValue, className, required }: 
     const finalValue = getFormattedDateContent()
 
     return (
-        <div className={cn("flex flex-col sm:flex-row gap-2", className)}>
+        <div className={cn("grid grid-cols-2 gap-3", className)}>
             {name && <input type="hidden" name={name} id={id} value={finalValue} required={required} />}
 
-            <div className='flex flex-col gap-2 flex-1 min-w-0'>
+            <div className='flex flex-col gap-2'>
                 <Popover open={open} onOpenChange={setOpen}>
                     <PopoverTrigger asChild>
                         <Button
                             variant='outline'
                             className={cn(
-                                "justify-between font-normal w-full h-11 bg-muted/5 border-border/30 hover:bg-muted/10 transition-all",
-                                !date && "text-muted-foreground"
+                                "justify-between font-normal w-full h-11 bg-[#111] border-[#222] hover:bg-[#1A1A1A] hover:border-zinc-700 transition-all text-sm",
+                                !date ? "text-zinc-500" : "text-white"
                             )}
                         >
                             <div className="flex items-center gap-2 truncate">
-                                <CalendarIcon size={14} className="text-muted-foreground shrink-0" />
+                                <CalendarIcon size={14} className={date ? "text-zinc-400 shrink-0" : "text-zinc-500 shrink-0"} />
                                 <span className="truncate">{date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pick date'}</span>
                             </div>
-                            <ChevronDownIcon size={14} className="opacity-50 shrink-0" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className='w-auto overflow-hidden p-0 border-border/10 shadow-xl' align='start'>
+                    <PopoverContent className='w-auto overflow-hidden p-0 border-[#1F1F1F] bg-[#0A0A0A] text-white shadow-xl' align='start'>
                         <Calendar
                             mode='single'
                             selected={date}
@@ -72,15 +71,30 @@ export function DateTimePicker({ name, id, defaultValue, className, required }: 
                 </Popover>
             </div>
 
-            <div className='flex flex-col gap-2 shrink-0 sm:w-[120px]'>
-                <div className="relative">
-                    <Clock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <div className='flex flex-col gap-2'>
+                <div 
+                    className="relative w-full h-11 bg-[#111] border border-[#222] rounded-lg hover:bg-[#1A1A1A] hover:border-zinc-700 transition-all overflow-hidden flex items-center px-4 focus-within:ring-2 focus-within:ring-white/20 focus-within:border-white/20 cursor-pointer"
+                    onClick={() => {
+                        const input = document.getElementById(id ? `${id}-time` : 'time-picker') as HTMLInputElement
+                        if (input && 'showPicker' in input) {
+                            try { input.showPicker() } catch (e) {}
+                        }
+                    }}
+                >
+                    <Clock size={14} className="text-zinc-500 shrink-0 mr-2" />
                     <Input
+                        id={id ? `${id}-time` : 'time-picker'}
                         type='time'
                         step='60'
                         value={time}
+                        required={required}
                         onChange={(e) => setTime(e.target.value)}
-                        className='pl-8 pr-2 h-11 bg-muted/5 border-border/30 transition-all appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-sm w-full'
+                        onClick={(e) => {
+                            if ('showPicker' in e.currentTarget) {
+                                try { e.currentTarget.showPicker() } catch (err) {}
+                            }
+                        }}
+                        className='bg-transparent border-0 h-full w-full p-0 text-white text-sm focus-visible:ring-0 [&::-webkit-calendar-picker-indicator]:hidden cursor-pointer'
                     />
                 </div>
             </div>
